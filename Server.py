@@ -8,7 +8,7 @@ print "UDP target IP:", UDP_IP
 print "UDP target port:", UDP_PORT
  
 sock = socket.socket( socket.AF_INET, # Internet
-                       socket.SOCK_DGRAM ) # UDP
+                      socket.SOCK_DGRAM ) # UDP
 
 while True:
   if MESSAGE < 5000:
