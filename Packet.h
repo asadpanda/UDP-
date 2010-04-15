@@ -8,6 +8,7 @@
 #ifndef PACKET_H_
 #define PACKET_H_
 
+#include <stdint.h>
 
 class Packet {
 
@@ -17,8 +18,15 @@ public:
   const static uint8_t FIN = 0x20;
   const static uint8_t OPT = 0x10;
 
-  Packet();
-  virtual ~Packet();
+  Packet(int);
+  ~Packet();
+
+  bool getField(uint8_t field);
+  void setField(uint8_t field, bool value=true);
+  void clear();
+  uint8_t getHeaderLength();
+  int getData(char *outBuffer, int outBufferLength);
+
 
 private:
   char *buffer;

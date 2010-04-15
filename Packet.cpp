@@ -6,12 +6,13 @@
  */
 
 #include "Packet.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 
 
-Packet::Packet(uint16_t seqnum, int length) {
-  buffer = new char[length];
-  this->length = length;
-
+Packet::Packet(int dataLength) {
+  buffer = new char[dataLength];
   clear();
 }
 
@@ -19,11 +20,16 @@ Packet::~Packet() {
   delete buffer;
 }
 
+void Packet::clear() {
+  memset(buffer, 0, length);
+  buffer[1] = 4;
+}
+
 bool Packet::getField(uint8_t field) {
   return ((field & buffer[0]) != 0);
 }
 
-void Packet::setField(uint8_t field, bool value = true) {
+void Packet::setField(uint8_t field, bool value) {
   if (value) {
     buffer[0] |= field;
   }
@@ -32,16 +38,19 @@ void Packet::setField(uint8_t field, bool value = true) {
   }
 }
 
-void Packet::clear() {
-  for (int i=0; i < length; i++)
-    buffer[i] = 0;
-}
-
-// header length is
+// header length is default 1
 uint8_t Packet::getHeaderLength() {
   return buffer[1];
 }
 
 int Packet::getData(char *outBuffer, int outBufferLength) {
-  return 1;
+  uint8_t headerLength = getHeaderLength();
+  int dataLength = (length - headerLength);
+
+  // bound check
+  if (dataLength > outBufferLength)
+    dataLength = outBufferLength;
+
+  memcpy(outBuffer, (buffer + headerLength), dataLength);
+  return dataLength;
 }
