@@ -1,4 +1,4 @@
-import UDP_Plus
+import UDP_Plus, bitstring
 
 conn = UDP_Plus.UDP_Plus()
 conn.bind()

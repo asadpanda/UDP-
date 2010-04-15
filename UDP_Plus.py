@@ -1,4 +1,4 @@
-import socket, random
+import socket, random, bitstring
 
 class UDP_Plus():
     
