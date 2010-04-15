@@ -7,30 +7,19 @@
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |            Length             |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |A|S|F|O|                                                       |
-   |C|Y|I|P|              Sequence/Acknowledgment #                |
-   |K|N|N|T|                                                       |
+   |A|S|F|O|                       |                               |
+   |C|Y|I|P|      RESERVED         |   Sequence/Acknowledgment #   |
+   |K|N|N|T|                       |                               |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |            Optional Field Controlled by OPT BIT               | 
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                             data                              |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-UDP+ data flows one way only.  Only acknowledgment packets are 
-sent to the client therefore only one field is needed for the
-Sequence/Acknowledgment numbers.
+UDP+ data flows one way only.  Only acknowledgment packets are sent to the client therefore only one field is needed for the Sequence/Acknowledgment numbers.
 
-The OPT bit is for future use for future use.  If there is no data loss
-on the connection and end to end communication is 100 ms.  Since UDP is
-meant to be time sensitive, flow control is not implemented by using
-window sizes in our protocol in our protocol.  To prevent too much data
-from being queued at the server or denial of service attacks, the server
-will automatically disconnect connections after 1 minute of no communication
-or the application not removing data from the buffer for 1 minute. 
+The OPT bit is for future use.  If there is no data loss on the connection and end to end communication is 100 ms.  The theoretical throughput of our protocol is  Since UDP is meant to be time sensitive, flow control is not implemented by using window sizes in our protocol in our protocol.  To prevent too much data from being queued at the server or denial of service attacks, the server will automatically disconnect connections after 1 minute of no communication or the application not removing data from the buffer for 1 minute. 
 
-Both the server and client applications use a maximum internal buffer size that
-single connections can keep to cache outgoing packets until they are ACKED or
-retried from the application.  The server also specifies the maximum number of
-client connections that are supported.
+Both the server and client applications use a maximum internal buffer size that single connections can keep to cache outgoing packets until they are ACKED or retried from the application.  The server also specifies the maximum number of client connections that are supported.
 
 
