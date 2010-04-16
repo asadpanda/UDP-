@@ -23,7 +23,8 @@ public:
   int bind();
 
 private:
-  Packet *packetBuffer;
+  Packet **packetBuffer; // for array of pointers
+  unsigned packetBufferSize;
   int ackedLocation;
   int lastSentLocation;
 };

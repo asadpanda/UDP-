@@ -8,10 +8,17 @@
 #include "UDPPlus.h"
 
 UDPPlus::UDPPlus() {
-  // TODO Auto-generated constructor stub
-
+  ackedLocation = 0;
+  lastSentLocation = 0;
+  packetBufferSize = 1024;
+  packetBuffer = new Packet*[packetBufferSize];
 }
 
 UDPPlus::~UDPPlus() {
-  // TODO Auto-generated destructor stub
+  for (unsigned i=0; i<packetBufferSize; i++) {
+    if (packetBuffer[i] != NULL) {
+      delete packetBuffer[i];
+    }
+  }
+  delete packetBuffer;
 }
