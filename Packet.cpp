@@ -8,6 +8,17 @@
 #include "Packet.h"
 #include <netinet/in.h>
 
+Packet::Packet(char *buffer, size_t length) {
+  this->length = length;
+  this->buffer = new char[length];
+  memcpy(this->buffer, buffer, length);
+}
+
+Packet::Packet(const Packet &original) {
+  buffer = new char[original.length];
+  length = original.length;
+  memcpy(buffer, original.buffer, length);
+}
 
 Packet::Packet(uint8_t field, uint16_t seqAckNumber, char *firstBuffer,
                size_t firstBufferLength, char *secondBuffer, size_t secondBufferLength) {
@@ -35,7 +46,7 @@ Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firs
     size_t firstBufferLength, char *secondBuffer, size_t secondBufferLength)
 {
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
-  length = DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength;
+  length = DEFAULTHEADERSIZE + 2 + firstBufferLength + secondBufferLength;
 
   clear();
   setField(field);
@@ -59,8 +70,6 @@ void Packet::insert_uint16_t(uint16_t number, char *location) {
   number = htons(number);
   memcpy(location, &number, sizeof(uint16_t));
 }
-
-
 
 Packet::~Packet() {
   delete buffer;

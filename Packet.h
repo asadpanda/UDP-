@@ -22,7 +22,8 @@ public:
   const static uint8_t FIN = 0x10;
   const static uint8_t OPT = 0x08;
 
-  Packet();
+  Packet(const Packet&);
+  Packet(char *buffer, size_t length);
   Packet(uint8_t field, uint16_t seqAckNumber, char *firstBuffer = 0,
       size_t firstBufferLength = 0, char *secondBuffer = 0, size_t secondBufferLength = 0);
   Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firstBuffer = 0,
