@@ -2,7 +2,7 @@
  * Packet.h
  *
  *  Created on: Apr 15, 2010
- *      Author: asaeed
+ *      Authors: Asad Saeed, Adam Darrah
  */
 
 #ifndef PACKET_H_

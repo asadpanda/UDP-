@@ -2,7 +2,7 @@
  * Packet.cpp
  *
  *  Created on: Apr 15, 2010
- *      Author: asaeed
+ *      Authors: Asad Saeed, Adam Darrah
  */
 
 #include "Packet.h"

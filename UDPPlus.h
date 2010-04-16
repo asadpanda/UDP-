@@ -2,7 +2,7 @@
  * UDPPlus.h
  *
  *  Created on: Apr 15, 2010
- *      Author: asaeed
+ *      Author: Asad Saeed, Adam Darrah
  */
 
 #ifndef UDPPLUS_H_

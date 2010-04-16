@@ -2,7 +2,7 @@
  * server.cpp
  *
  *  Created on: Apr 15, 2010
- *      Author: asaeed, akdarrah
+ *      Author: Asad Saeed, Adam Darrah
  */
 
 #include "UDPPlus.h"
