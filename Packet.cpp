@@ -26,20 +26,14 @@ Packet::Packet(uint8_t field, uint16_t seqAckNumber, char *firstBuffer,
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
   length = DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength;
 
-  clear();
-  setField(field);
-  insert_uint16_t(seqAckNumber, buffer + 2);
-
-  if ( getField(OPT) ) {
-    setHeaderLength(DEFAULTHEADERSIZE + firstBufferLength);
-  }
-  if ( firstBuffer != NULL ) {
-    memcpy(buffer + DEFAULTHEADERSIZE, firstBuffer, firstBufferLength);
-  }
-  if (secondBuffer != NULL) {
-    memcpy(buffer + DEFAULTHEADERSIZE + firstBufferLength, secondBuffer, secondBufferLength);
+  int seqNumber = seqAckNumber;
+  int ackNumber = 0;
+  if (field & ACK == ACK) {
+    ackNumber = seqAckNumber;
+    seqNumber = 0;
   }
 
+  Packet(field, seqNumber, ackNumber, firstBuffer, firstBufferLength, secondBuffer, secondBufferLength);
 }
 
 Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firstBuffer,
@@ -50,18 +44,17 @@ Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firs
 
   clear();
   setField(field);
-  insert_uint16_t(seqNumber, buffer + 2);
-  insert_uint16_t(ackNumber, buffer + 4);
-  int topHeadLength = 6;
+  setSeqNumber(seqNumber, getField(SEQ));
+  setAckNumber(ackNumber, getField(ACK));
   if ( getField(OPT) ) {
-    setHeaderLength(6 + firstBufferLength);
+    setHeaderLength(DEFAULTHEADERSIZE + firstBufferLength);
   }
 
   if ( firstBuffer != NULL ) {
-    memcpy(buffer + topHeadLength, firstBuffer, firstBufferLength);
+    memcpy(buffer + DEFAULTHEADERSIZE, firstBuffer, firstBufferLength);
   }
   if (secondBuffer != NULL) {
-    memcpy(buffer + topHeadLength + firstBufferLength, secondBuffer, secondBufferLength);
+    memcpy(buffer + DEFAULTHEADERSIZE + firstBufferLength, secondBuffer, secondBufferLength);
   }
 
 }
@@ -77,7 +70,7 @@ Packet::~Packet() {
 
 void Packet::clear() {
   memset(buffer, 0, length);
-  buffer[1] = 4;
+  buffer[1] = 6;
 }
 
 bool Packet::getField(uint8_t field) {
@@ -95,7 +88,7 @@ void Packet::setField(uint8_t field, bool value) {
 
 bool Packet::getSeqNumber(uint16_t &seqNumber) {
   if ( getField(SEQ) ) {
-    memcpy(&seqNumber, buffer + 2, sizeof(uint16_t));
+    memcpy(&seqNumber, buffer + SEQLOCATION, sizeof(uint16_t));
     seqNumber = ntohs(seqNumber);
     return true;
   }
@@ -103,29 +96,35 @@ bool Packet::getSeqNumber(uint16_t &seqNumber) {
 }
 
 bool Packet::getAckNumber(uint16_t &ackNumber) {
-  if (getField(Packet::ACK)) {
-    int ackLocation = 2;
-    if (getField(Packet::SEQ)) {
-      ackLocation += 2;
-    }
-    memcpy(&ackNumber, buffer + ackLocation, sizeof(uint16_t));
+  if (getField(ACK)) {
+    memcpy(&ackNumber, buffer + ACKLOCATION, sizeof(uint16_t));
     ackNumber = ntohs(ackNumber);
     return true;
   }
   return false;
 }
 
-size_t Packet::getOptField(char *optBuffer, size_t optBufferLength) {
-  size_t optStart = sizeof(char[4]);
+void Packet::setAckNumber(uint16_t seqNumber, bool shouldSet) {
+  if (shouldSet) {
+    setField(SEQ);
+    insert_uint16_t(ackNumber, buffer + SEQLOCATION);
+  }
+}
 
-  if (getField(Packet::SEQ) && getField(Packet::ACK))
-    optStart += sizeof(char[2]);
-  size_t optLength = getHeaderLength() - optStart;
+void Packet::setAckNumber(uint16_t ackNumber, bool shouldSet) {
+  if (shouldSet) {
+    setField(ACK);
+    insert_uint16_t(ackNumber, buffer + ACKLOCATION);
+  }
+}
+
+size_t Packet::getOptField(char *optBuffer, size_t optBufferLength) {
+  size_t optLength = getHeaderLength() - DEFAULTHEADERSIZE;
 
   if (optLength > optBufferLength)
     optLength = optBufferLength;
 
-  memcpy(optBuffer, buffer + optStart, optLength );
+  memcpy(optBuffer, buffer + DEFAULTHEADERSIZE, optLength );
 
   return optLength;
 }

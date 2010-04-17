@@ -15,12 +15,15 @@
 class Packet {
 
 public:
-  const static unsigned DEFAULTHEADERSIZE = 4;
+  const static unsigned DEFAULTHEADERSIZE = 6;
   const static uint8_t SEQ = 0x80;
   const static uint8_t ACK = 0x40;
   const static uint8_t SYN = 0x20;
   const static uint8_t FIN = 0x10;
   const static uint8_t OPT = 0x08;
+
+  const static int SEQLOCATION = 2;
+  const static int ACKLOCATION = 4;
 
   Packet(const Packet&);
   Packet(char *buffer, size_t length);
