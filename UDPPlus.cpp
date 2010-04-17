@@ -22,3 +22,21 @@ UDPPlus::~UDPPlus() {
   }
   delete packetBuffer;
 }
+
+int UDPPlus::getaddr() {
+  // make sure hints struct is empty
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AI_PASSIVE;   // compatible with IPv4 and IPv6
+  hints.as_socktype = SOCK_DGRAM; // UDP stream sockets
+  hints.ai_flags = AI_PASSIVE;    // use localhost
+  
+  return getaddrinfo(NULL, "30000", &hints, &res);
+}
+
+int UDPPlus::getsocket() {
+  return socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+}
+
+int UDPPlus::bind_p (int sockfd) {
+  return bind(sockfd, res->ai_addr, res->ai_addrlen);
+}
