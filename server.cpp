@@ -5,10 +5,13 @@
  *      Author: Asad Saeed, Adam Darrah
  */
 
+#include "utility.h"
 #include "UDPPlus.h"
 
 UDPPlus *conn;
 
-int main() {
-
+int main(int argc, char* argv[]) {
+  
+  conn = new UDPPlus;
+  return 0;
 }

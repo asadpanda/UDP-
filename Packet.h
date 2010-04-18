@@ -8,9 +8,7 @@
 #ifndef PACKET_H_
 #define PACKET_H_
 
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
+#include "utility.h"
 
 class Packet {
 

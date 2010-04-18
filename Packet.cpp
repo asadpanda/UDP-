@@ -6,7 +6,7 @@
  */
 
 #include "Packet.h"
-#include <netinet/in.h>
+#include "utility.h"
 
 Packet::Packet(char *buffer, size_t length) {
   this->length = length;
