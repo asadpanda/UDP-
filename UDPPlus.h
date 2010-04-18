@@ -14,6 +14,8 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdint.h>
+#include <boost/thread.hpp> // boost install instructions can be found here: http://www.technoboria.com/2009/07/simple-guide-to-installing-boost-on-mac-os-x/
+                            // make sure to move /boost directory to /usr/include directory
 #include "Packet.h"
 
 enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK };
