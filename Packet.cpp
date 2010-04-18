@@ -70,7 +70,7 @@ Packet::~Packet() {
 
 void Packet::clear() {
   memset(buffer, 0, length);
-  buffer[1] = 6;
+  buffer[1] = DEFAULTHEADERSIZE;
 }
 
 bool Packet::getField(uint8_t field) {
