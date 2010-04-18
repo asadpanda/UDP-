@@ -7,8 +7,8 @@
 
 #include "UDPPlus.h"
 
+UDPPlus *conn;
 
 int main() {
-
 
 }

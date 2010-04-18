@@ -23,7 +23,6 @@ public:
   UDPPlus();
   virtual ~UDPPlus();
 
-  void init();
   void connect();
   void close();
   void recieve();

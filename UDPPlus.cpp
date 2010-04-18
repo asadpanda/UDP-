@@ -15,7 +15,12 @@
 using namespace std;
 
 UDPPlus::UDPPlus() {
-
+  inBufferSize = 1024;
+  outBufferSize = 1024;
+  inBufferBegin = 0;
+  inBufferEnd = 0;
+  outBufferBegin = 0;
+  outBufferEnd = 0;
 }
 
 UDPPlus::~UDPPlus() {
@@ -31,21 +36,6 @@ UDPPlus::~UDPPlus() {
   }
   delete inBuffer;
   delete outBuffer;
-}
-
-void UDPPlus::init() {
-  inBufferSize = 1024;
-  outBufferSize = 1024;
-  inBufferBegin = 0;
-  inBufferEnd = 0;
-  outBufferBegin = 0;
-  outBufferEnd = 0;
-
-  sock = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sock == -1) {
-    fprintf(stderr, "Sorry, could not create socket");
-    exit(0);
-  }
 }
 
 void UDPPlus::connect() {
@@ -64,8 +54,6 @@ void UDPPlus::close() {
 }
 
 void UDPPlus::recieve() {
-
-
 }
 
 int UDPPlus::getaddr() {
