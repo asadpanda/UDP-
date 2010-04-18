@@ -8,10 +8,12 @@
    |            Length             |           Checksum            |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |S|A|S|F|O|     |    Header     |                               |
-   |E|C|Y|I|P|     |    Length     |   Sequence/Acknowledgment #   |
+   |E|C|Y|I|P|     |    Length     |           Sequence #          |
    |Q|Q|N|N|T|     |               |                               |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-   |Optional Field For SACK Controlled by OPT BIT and Header Length|
+   |                               |   Optional Field For SACK     |
+   |        Acknowledgment #       |  Controlled by OPT BIT and    |
+   |                               |       Header Length           |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
    |                             data                              |
    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+

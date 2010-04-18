@@ -104,10 +104,10 @@ bool Packet::getAckNumber(uint16_t &ackNumber) {
   return false;
 }
 
-void Packet::setAckNumber(uint16_t seqNumber, bool shouldSet) {
+void Packet::setSeqNumber(uint16_t seqNumber, bool shouldSet) {
   if (shouldSet) {
     setField(SEQ);
-    insert_uint16_t(ackNumber, buffer + SEQLOCATION);
+    insert_uint16_t(seqNumber, buffer + SEQLOCATION);
   }
 }
 

@@ -3,6 +3,8 @@
  *
  *  Created on: Apr 15, 2010
  *      Author: Asad Saeed, Adam Darrah
+ *
+ *      currently only supports a single connection.
  */
 
 #include "UDPPlus.h"
