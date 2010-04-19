@@ -8,14 +8,21 @@
 #ifndef UDPPLUSCONNECTION_H_
 #define UDPPLUSCONNECTION_H_
 
+#include "utility.h"
+#include "UDPPlus.h"
+#include "Packet.h"
+
 enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK };
 
 class UDPPlusConnection {
 public:
-  UDPPlusConnection();
+  UDPPlusConnection(UDPPlus*);
   virtual ~UDPPlusConnection();
 
-  handlePacket(&Packet);
+  //void handlePacket(&Packet);
+	
+	void send(void *, size_t, int);
+	
 private:
   UDPPlus *mainHandler;
   State currentState;
