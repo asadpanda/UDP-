@@ -14,6 +14,7 @@
 #include <cctype>
 #include <ctime>
 #include <string>
+#include <vector>
 
 #include <stdio.h>
 #include <stdint.h>
@@ -26,6 +27,7 @@
 #include <netinet/in.h>
 #include <boost/thread.hpp> // boost install instructions can be found here: http://www.technoboria.com/2009/07/simple-guide-to-installing-boost-on-mac-os-x/
                             // make sure to move /boost directory to /usr/include directory
+#include <boost/bind.hpp>
 
 using namespace std;
 

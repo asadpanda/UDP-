@@ -51,14 +51,15 @@ void UDPPlus::close() {
   // close connection
 }
 
-void UDPPlus::recieve() {
-}
+//void UDPPlus::recv(int connection, void *buffer, size_t len, int timeout) {
+//
+//}
 
 int UDPPlus::getaddr() {
   // make sure hints struct is empty
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AI_PASSIVE;   // compatible with IPv4 and IPv6
-  hints.as_socktype = SOCK_DGRAM; // UDP stream sockets
+  hints.ai_socktype = SOCK_DGRAM; // UDP stream sockets
   hints.ai_flags = AI_PASSIVE;    // use localhost
   
   return getaddrinfo(NULL, "30000", &hints, &res);

@@ -11,8 +11,6 @@
 #include "utility.h"
 #include "Packet.h"
 
-enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK };
-
 class UDPPlus {
 public:
   UDPPlus();
@@ -38,18 +36,7 @@ public:
   int bind_p(int);
 
 private:
-  State currentState;
 
-  Packet **inBuffer; // for array of pointers
-  Packet **outBuffer;
-  unsigned inBufferSize;
-  unsigned outBufferSize;
-  uint16_t inBufferBegin;
-  uint16_t inBufferEnd;
-  uint16_t outBufferBegin;
-  uint16_t outBufferEnd;
-  uint16_t lastAckNum;
-  uint16_t lastSeqNum;
 
   
   // structs needed for socket
