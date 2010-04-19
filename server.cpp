@@ -10,8 +10,9 @@
 
 UDPPlus *conn;
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {	
   
-  conn = new UDPPlus;
+	conn = new UDPPlus(5, 512);
+	
   return 0;
 }

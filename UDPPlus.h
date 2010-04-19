@@ -10,37 +10,39 @@
 
 #include "utility.h"
 #include "Packet.h"
+#include "UDPPlusConnection.h"
 
 class UDPPlus {
 public:
-  UDPPlus();
+  UDPPlus(int, int);
   virtual ~UDPPlus();
 
-  void connect();
+  void conn(struct addrinfo);
   void close();
-  void recieve();
+	
+	void bind_p();
+	&UDPPlusConnection accept_p();
 
 
   ssize_t recv(int s, void *buf, size_t len, int flags);
-  
-  // encapsulate getaddrinfo method
-  // sets up needed structs
-  int getaddr();
-  
-  // encapsulate socket method
-  // returns socket file discriptor
-  int getsocket();
-  
-  // encapsulate bind method
-  // needs socket file discriptor from getsocket()
-  int bind_p(int);
 
 private:
+	void recieve();
+	int findSlot();	
+	void send(int conn, Packet*);
 
-
-  
-  // structs needed for socket
-  struct addrinfo hints, *res;
+	UDPPlusConnection *connectionList;
+	int sockfd;
+	int max_connections;
+	int bufferSize;
+	boost::thread listener;
+	bool bounded;
+	
+	boost::mutex waitingMutex;
+	boost::condition_variable waitingCondition;
+	UDPPlusConnection *waitingConnection;
+	
+	friend class UDPPlusConnection;
 };
 
 #endif /* UDPPLUS_H_ */
