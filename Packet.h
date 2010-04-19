@@ -14,7 +14,7 @@ class Packet {
 
 public:
   const static unsigned DEFAULTHEADERSIZE = 6;
-  const static uint8_t SEQ = 0x80;
+  const static uint8_t DATA = 0x80;
   const static uint8_t ACK = 0x40;
   const static uint8_t SYN = 0x20;
   const static uint8_t FIN = 0x10;
@@ -48,6 +48,7 @@ public:
   void setHeaderLength(uint8_t headerLength);
 
   size_t getData(char *outBuffer, size_t outBufferLength);
+  size_t getLength();
 
 
 private:
