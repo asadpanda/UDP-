@@ -74,7 +74,7 @@ void Packet::clear() {
 }
 
 bool Packet::getField(uint8_t field) {
-  return ((field & buffer[0]) != 0);
+  return ((field & buffer[0]) == field);
 }
 
 void Packet::setField(uint8_t field, bool value) {
@@ -87,12 +87,9 @@ void Packet::setField(uint8_t field, bool value) {
 }
 
 bool Packet::getSeqNumber(uint16_t &seqNumber) {
-  if ( getField(SEQ) ) {
     memcpy(&seqNumber, buffer + SEQLOCATION, sizeof(uint16_t));
     seqNumber = ntohs(seqNumber);
     return true;
-  }
-  return false;
 }
 
 bool Packet::getAckNumber(uint16_t &ackNumber) {
@@ -106,7 +103,6 @@ bool Packet::getAckNumber(uint16_t &ackNumber) {
 
 void Packet::setSeqNumber(uint16_t seqNumber, bool shouldSet) {
   if (shouldSet) {
-    setField(SEQ);
     insert_uint16_t(seqNumber, buffer + SEQLOCATION);
   }
 }
@@ -148,4 +144,8 @@ size_t Packet::getData(char *outBuffer, size_t outBufferLength) {
 
   memcpy(outBuffer, (buffer + headerLength), dataLength);
   return dataLength;
+}
+
+size_t Packet::getLength() {
+  return length;
 }

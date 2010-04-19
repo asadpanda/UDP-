@@ -8,6 +8,8 @@
 #ifndef UDPPLUSCONNECTION_H_
 #define UDPPLUSCONNECTION_H_
 
+#include "utility.h"
+
 enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK };
 
 class UDPPlusConnection {
@@ -28,14 +30,18 @@ private:
   boost::mutex outBufferLock;
   Packet **inBuffer; // for array of pointers
   Packet **outBuffer;
-  unsigned inBufferSize;
-  unsigned outBufferSize;
-  uint16_t inBufferBegin;
-  uint16_t inBufferEnd;
-  uint16_t outBufferBegin;
-  uint16_t outBufferEnd;
-  uint16_t lastAckNum;
-  uint16_t lastSeqNum;
+  unsigned inBufferSize= 0;
+  unsigned outBufferSize = 0;
+  uint16_t inBufferBegin = 0;
+  uint16_t inBufferEnd = 0;
+  uint16_t outBufferBegin = 0;
+  uint16_t outBufferEnd = 0;
+  uint16_t newAckNum = 0;
+  uint16_t newSeqNum = 0;
+  uint16_t inItems = 0;
+  uint16_t outItems = 0;
+  uint8_t numAck = 0;
+  uint16_t lastAckRecv = 0;
 
 };
 
