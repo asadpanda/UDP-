@@ -24,14 +24,14 @@ public:
   const static int ACKLOCATION = 4;
 
   Packet(const Packet&);
-  Packet(char *buffer, size_t length);
-  Packet(uint8_t field, uint16_t seqAckNumber, char *firstBuffer = 0,
-      size_t firstBufferLength = 0, char *secondBuffer = 0, size_t secondBufferLength = 0);
-  Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firstBuffer = 0,
-      size_t firstBufferLength = 0, char *secondBuffer = 0, size_t secondBufferLength = 0);
+  Packet(void *buffer, size_t length);
+  Packet(uint8_t field, uint16_t seqAckNumber, void *firstBuffer = 0,
+      size_t firstBufferLength = 0, void *secondBuffer = 0, size_t secondBufferLength = 0);
+  Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer = 0,
+      size_t firstBufferLength = 0, void *secondBuffer = 0, size_t secondBufferLength = 0);
   ~Packet();
 
-  void insert_uint16_t(uint16_t number, char *location);
+  void insert_uint16_t(uint16_t number, void *location);
   bool getField(uint8_t field);
   void setField(uint8_t field, bool value=true);
   bool getSeqNumber(uint16_t &seqNumber);
@@ -47,7 +47,7 @@ public:
   uint8_t getHeaderLength();
   void setHeaderLength(uint8_t headerLength);
 
-  size_t getData(char *outBuffer, size_t outBufferLength);
+  size_t getData(void *outBuffer, size_t outBufferLength);
   size_t getLength();
 
 

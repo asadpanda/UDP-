@@ -10,17 +10,18 @@
 
 #include "utility.h"
 #include "Packet.h"
-#include "UDPPlusConnection.h"
+
+class UDPPlusConnection;
 
 class UDPPlus {
 public:
-  UDPPlus(int, int);
+  UDPPlus(int max_connection = 10, int bufferSize = 1024);
   virtual ~UDPPlus();
 
-  void conn(struct addrinfo);
+  void conn(const struct sockaddr*, const socklen_t&);
   void close();
 	
-	void bind_p(struct addrinfo);
+	void bind_p(const struct sockaddr*, const socklen_t&);
 	UDPPlusConnection* accept_p();
 
   ssize_t recv(int s, void *buf, size_t len, int flags);
@@ -30,18 +31,19 @@ private:
 	void recieve();
 	int findSlot();	
 	void send(int conn, Packet*);
-	int isHostConnected(struct addrinfo *connection, size_t length);
+	int isHostConnected(struct sockaddr *connection, socklen_t length);
 
 	UDPPlusConnection **connectionList;
 	int sockfd;
 	int max_connections;
 	int bufferSize;
-	boost::thread listener;
+	//boost::thread listener;
 	bool bounded;
 	
+	bool waiting;
 	boost::mutex waitingMutex;
 	boost::condition_variable waitingCondition;
-	UDPPlusConnection **waitingConnection;
+	UDPPlusConnection *waitingConnection;
 	
 	friend class UDPPlusConnection;
 };

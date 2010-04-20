@@ -8,7 +8,7 @@
 #include "Packet.h"
 #include "utility.h"
 
-Packet::Packet(char *buffer, size_t length) {
+Packet::Packet(void *buffer, size_t length) {
   this->length = length;
   this->buffer = new char[length];
   memcpy(this->buffer, buffer, length);
@@ -20,8 +20,8 @@ Packet::Packet(const Packet &original) {
   memcpy(buffer, original.buffer, length);
 }
 
-Packet::Packet(uint8_t field, uint16_t seqAckNumber, char *firstBuffer,
-               size_t firstBufferLength, char *secondBuffer, size_t secondBufferLength) {
+Packet::Packet(uint8_t field, uint16_t seqAckNumber, void *firstBuffer,
+               size_t firstBufferLength, void *secondBuffer, size_t secondBufferLength) {
 
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
   length = DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength;
@@ -36,8 +36,8 @@ Packet::Packet(uint8_t field, uint16_t seqAckNumber, char *firstBuffer,
   Packet(field, seqNumber, ackNumber, firstBuffer, firstBufferLength, secondBuffer, secondBufferLength);
 }
 
-Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firstBuffer,
-    size_t firstBufferLength, char *secondBuffer, size_t secondBufferLength)
+Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer,
+    size_t firstBufferLength, void *secondBuffer, size_t secondBufferLength)
 {
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
   length = DEFAULTHEADERSIZE + 2 + firstBufferLength + secondBufferLength;
@@ -58,7 +58,7 @@ Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firs
 
 }
 
-void Packet::insert_uint16_t(uint16_t number, char *location) {
+void Packet::insert_uint16_t(uint16_t number, void *location) {
   number = htons(number);
   memcpy(location, &number, sizeof(uint16_t));
 }
@@ -133,7 +133,7 @@ void Packet::setHeaderLength(uint8_t headerLength) {
   buffer[1] = headerLength;
 }
 
-size_t Packet::getData(char *outBuffer, size_t outBufferLength) {
+size_t Packet::getData(void *outBuffer, size_t outBufferLength) {
   size_t headerLength = getHeaderLength();
   size_t dataLength = (length - headerLength);
 

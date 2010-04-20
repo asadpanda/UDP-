@@ -7,11 +7,22 @@
 
 #include "UDPPlusConnection.h"
 
-UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler, struct sockaddr remote, int bufferSize, Packet *incomingConnection) {
-  this->mainHandler = mainHandler;
-  this->remote = remote;
-  this->outbufferSize = bufferSize;
-  this->inbufferSize = bufferSize;
+UDPPlusConnection::UDPPlusConnection() {
+
+}
+
+UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
+    const struct sockaddr *remote,
+    const socklen_t &remoteSize,
+    int &bufferSize,
+    Packet *incomingConnection) {
+
+    this->mainHandler = mainHandler;
+
+  memcpy(&remoteAddress, remote, remoteSize);
+  this->remoteAddressLength = remoteSize;
+  this->outBufferSize = bufferSize;
+  this->inBufferSize = bufferSize;
   inBufferBegin = 0;
   inBufferEnd = 0;
   outBufferBegin = 0;
@@ -32,7 +43,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler, struct sockaddr remot
     Packet *current = new Packet(Packet::SYN, randomValue);
     outBuffer[outBufferEnd] = current;
     currentState = SYN_SENT;
-    send(outBufferEnd);
+   // send(outBufferEnd);
   }
   else {
     currentState = SYN_RECIEVED;
@@ -55,6 +66,10 @@ UDPPlusConnection::~UDPPlusConnection() {
   delete outBuffer;
 }
 
+const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
+  addrLength = this->remoteAddressLength;
+  return &remoteAddress;
+}
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
   if (currentState == SYN_SENT) {
     if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
@@ -92,7 +107,7 @@ void UDPPlusConnection::send(void *buf, size_t len, int flags) {
   boost::mutex::scoped_lock l(outBufferMutex);
   while (outItems == outBufferSize)
     outConditionFull.wait(l);
-  Packet *currentPacket = new Packet(Packet::SEQ, ++lastSeqNumber, buf, len);
+  Packet *currentPacket = new Packet(Packet::DATA, newSeqNum++, buf, len);
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
   outItems++;
   outConditionEmpty.notify_one();

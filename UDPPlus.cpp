@@ -19,12 +19,14 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 	bufferSize = buf;
 	*connectionList = new UDPPlusConnection[max_conn];
 	bounded = false;
+	waiting = false;
 	
 	// make all slots initially null
 	for(int i=0; i < max_conn; i++)
 		connectionList[i] = NULL;
 	
-	if(sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP) == -1) {
+	sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if(sockfd == -1) {
 		// throw error
 		printf("error creating socket");
 		exit(0);
@@ -35,8 +37,7 @@ UDPPlus::~UDPPlus() {
 	delete connectionList;
 }
 
-void UDPPlus::bind_p(struct addrinfo info) {
->>>>>>> 50754b10dd5d204271354e2557d404af649130e4
+void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -45,12 +46,11 @@ void UDPPlus::bind_p(struct addrinfo info) {
 		exit(0);
 	}
 
-	bind(sockfd, info.ai_addr, sizeof(info.ai_addr));
-	boost::thread listener(boost::bind(&UDPPLus::listen, this));
+	bind(sockfd, info, infoLength);
+//boost::thread listener(boost::bind(&UDPPlus::listen, this));
 }
 
-&UDPPlusConnection UDPPlus::accept_p() {
-
+UDPPlusConnection * UDPPlus::accept_p() {
 	boost::mutex::scoped_lock l(waitingMutex);
 	waiting = true;
 	if (waitingConnection == NULL)
@@ -64,21 +64,23 @@ void UDPPlus::bind_p(struct addrinfo info) {
 void UDPPlus::listen() {
 	char buffer[5000];
 	int location;
-	struct addrinfo connection;
+	struct sockaddr connection;
+	socklen_t connectionLength;
 	while(true) {
 
 		memset(&connection, 0, sizeof(connection));
-		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, sizeof(connection));
-		location = isHostConnected(&connection, sizeof(connection));
+		connectionLength = sizeof(connection);
+		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
+		location = isHostConnected(&connection, connectionLength);
 		if (location >= 0) {
-			connectionList[location]->handlePacket(Packet(buffer, length));
+			connectionList[location]->handlePacket(new Packet(buffer, length));
 		}
 		else {
 			boost::mutex::scoped_lock l(waitingMutex);
 			if (waiting == true) {
 				Packet *tempPacket = new Packet(buffer, length);
 				if (tempPacket->getField(Packet::SYN)) {
-					waitingConnection = new UDPPlusConnection(this, connection, sizeof(connection), tempPacket);
+					waitingConnection = new UDPPlusConnection(this, &connection, connectionLength, bufferSize, tempPacket);
 					waitingCondition.notify_one();
 				} else {
 					delete tempPacket;
@@ -88,10 +90,12 @@ void UDPPlus::listen() {
 	}
 }
 		
-int UDPPlus::isHostConnected(struct addrinfo *connection, size_t length) {
+int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
 	for (int i=0; i < max_connections; i++) {
 		if (connectionList[i] != NULL) {
-			if (memcmp(&connection, connectionList[i]->getAddrInfo(), length) == 0) {
+		  socklen_t tempAddressLength;
+		  const struct sockaddr *tempAddress = connectionList[i]->getSockAddr(tempAddressLength);
+			if (tempAddressLength == length && memcmp(connection, tempAddress, length) == 0) {
 				return i;
 			}
 		}
@@ -100,7 +104,7 @@ int UDPPlus::isHostConnected(struct addrinfo *connection, size_t length) {
 }
 																 
 
-void UDPPlus::conn(struct addrinfo info) {
+void UDPPlus::conn(const struct sockaddr *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -108,13 +112,13 @@ void UDPPlus::conn(struct addrinfo info) {
 		printf("already bounded");
 		exit(0);
 	}
-	connect(sockfd, info.ai_addr, sizeof(info.ai_addr));
+	connect(sockfd, info, infoLength);
 	int location = findSlot();
 	if (location == -1) {
 		printf("gone over connections");
 	}
   // build connection information
-  UDPPlusConnection *active = new UDPPlusConnection(this, info.sockaddr, bufferSize );
+  UDPPlusConnection *active = new UDPPlusConnection(this, info, infoLength, bufferSize);
 	connectionList[location] = active;
 }
 

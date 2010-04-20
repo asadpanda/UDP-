@@ -26,6 +26,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <boost/thread.hpp>
+#include <boost/thread/condition.hpp>
 #include <boost/bind.hpp>
 
 using namespace std;
