@@ -25,8 +25,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <boost/thread.hpp> // boost install instructions can be found here: http://www.technoboria.com/2009/07/simple-guide-to-installing-boost-on-mac-os-x/
-                            // make sure to move /boost directory to /usr/include directory
+#include <boost/thread.hpp>
 #include <boost/bind.hpp>
 
 using namespace std;

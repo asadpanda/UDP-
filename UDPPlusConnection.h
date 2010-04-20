@@ -16,12 +16,13 @@ enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, 
 
 class UDPPlusConnection {
 public:
-  UDPPlusConnection(UDPPlus*);
+  UDPPlusConnection(UDPPlus *mainHandler, struct sockaddr remote, int bufferSize, Packet *incomingConnection);
   virtual ~UDPPlusConnection();
 
-  //void handlePacket(&Packet);
+  void handlePacket(Packet *currentPacket);
 	
 	void send(void *, size_t, int);
+	void recv(int s, void *buf, size_t len);
 	
 private:
   UDPPlus *mainHandler;
@@ -31,22 +32,23 @@ private:
   boost::condition_variable inConditionFull;
   boost::condition_variable outConditionEmpty;
   boost::condition_variable outConditionFull;
-  boost::mutex inBufferLock;
-  boost::mutex outBufferLock;
+  boost::mutex inBufferMutex;
+  boost::mutex outBufferMutex;
   Packet **inBuffer; // for array of pointers
   Packet **outBuffer;
-  unsigned inBufferSize= 0;
-  unsigned outBufferSize = 0;
-  uint16_t inBufferBegin = 0;
-  uint16_t inBufferEnd = 0;
-  uint16_t outBufferBegin = 0;
-  uint16_t outBufferEnd = 0;
-  uint16_t newAckNum = 0;
-  uint16_t newSeqNum = 0;
-  uint16_t inItems = 0;
-  uint16_t outItems = 0;
-  uint8_t numAck = 0;
-  uint16_t lastAckRecv = 0;
+  int inBufferSize; // changed from unsigned
+  int outBufferSize;
+  uint16_t inBufferBegin;
+  uint16_t inBufferEnd;
+  uint16_t outBufferBegin;
+  uint16_t outBufferEnd;
+  uint16_t newAckNum;
+  uint16_t newSeqNum;
+  uint16_t inItems;
+  uint16_t outItems;
+  uint8_t numAck;
+  uint16_t lastAckRecv;
+	struct sockaddr remote;
 
 };
 

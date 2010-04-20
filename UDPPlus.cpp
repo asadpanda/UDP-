@@ -10,13 +10,14 @@
 #include "UDPPlus.h"
 #include "utility.h"
 #include "UDPPlusConnection.h"
+#include "Packet.h"
 
 using namespace std;
 
 UDPPlus::UDPPlus(int max_conn, int buf) {
 	max_connections = max_conn;
 	bufferSize = buf;
-	connectionList = new UDPPlusConnection[max_conn];
+	*connectionList = new UDPPlusConnection[max_conn];
 	bounded = false;
 	
 	// make all slots initially null
@@ -34,7 +35,7 @@ UDPPlus::~UDPPlus() {
 	delete connectionList;
 }
 
-void UDPPlus::bind_p(struct addrinfo) {
+void UDPPlus::bind_p(struct addrinfo info) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -42,7 +43,7 @@ void UDPPlus::bind_p(struct addrinfo) {
 		printf("already bounded");
 		exit(0);
 	}
-	bind(sockfd, addrinfo.ai_addr, sizeof(addrinfo.ai_addr));
+	bind(sockfd, info.ai_addr, sizeof(info.ai_addr));
 	boost::thread listener(boost::bind(&UDPPLus::listen));
 }
 
@@ -73,7 +74,7 @@ void UDPPlus::listen() {
 		else {
 			boost::mutex::scoped_lock l(waitingMutex);
 			if (waiting == true) {
-				Packet *tempPacket = Packet(buffer, length);
+				Packet *tempPacket = new Packet(buffer, length);
 				if (tempPacket->getField(Packet::SYN)) {
 					waitingConnection = new UDPPlusConnection(this, connection, sizeof(connection), tempPacket);
 					waitingCondition.notify_one();
@@ -97,7 +98,7 @@ int UDPPlus::isHostConnected(struct addrinfo *connection, size_t length) {
 }
 																 
 
-void UDPPlus::conn(struct addrinfo) {
+void UDPPlus::conn(struct addrinfo info) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -105,18 +106,18 @@ void UDPPlus::conn(struct addrinfo) {
 		printf("already bounded");
 		exit(0);
 	}
-	connect(sockfd, addrinfo.ai_addr, sizeof(addrinfo.ai_addr));
+	connect(sockfd, info.ai_addr, sizeof(info.ai_addr));
 	int location = findSlot();
 	if (location == -1) {
-		printf("gone over connections")
+		printf("gone over connections");
 	}
   // build connection information
-  UDPPlusConnection *active = new UDPPlusConnection(this, addrinfo.sockaddr, bufferSize );
-	connectionList[location] = *active;
+  UDPPlusConnection *active = new UDPPlusConnection(this, info.sockaddr, bufferSize );
+	connectionList[location] = active;
 }
 
 int UDPPlus::findSlot() {
-	for(int i = 0; i < max_connections, i++) {
+	for(int i = 0; i < max_connections; i++) {
 		if(connectionList[i] == NULL)
 			return i;
 	}

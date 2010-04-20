@@ -10,8 +10,8 @@
 UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler, struct sockaddr remote, int bufferSize, Packet *incomingConnection) {
   this->mainHandler = mainHandler;
   this->remote = remote;
-  this->outbufferSize = bufferSize;
-  this->inbufferSize = bufferSize;
+	inBufferSize = bufferSize;
+  outBufferSize = bufferSize;
 
   inBuffer = new Packet*[inBufferSize];
   outBuffer = new Packet*[outBufferSize];
@@ -28,6 +28,18 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler, struct sockaddr remot
     currentState = SYN_RECIEVED;
     handlePacket(incomingConnection);
   }
+	
+	// initialize data members
+  inBufferBegin = 0;
+  inBufferEnd = 0;
+  outBufferBegin = 0;
+  outBufferEnd = 0;
+  newAckNum = 0;
+  newSeqNum = 0;
+  inItems = 0;
+  outItems = 0;
+  numAck = 0;
+  lastAckRecv = 0;	
 }
 
 UDPPlusConnection::~UDPPlusConnection() {
@@ -46,15 +58,17 @@ UDPPlusConnection::~UDPPlusConnection() {
 }
 
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
-  if (currentState == SYN_SENT)
   if (currentState == SYN_SENT) {
     if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
-      if (currentPacket->getAckNumber() == newSeqNum) {
-        newAckNumber = currentPacket->getSeqNumber();
+			uint16_t ack_num;
+			currentPacket->getAckNumber(ack_num);
+      if (ack_num == newSeqNum) {
+				uint16_t newAckNumber;
+        currentPacket->getSeqNumber(newAckNumber);
         currentState == ESTABLISHED;
       }
     }
-    delete Packet;
+    delete currentPacket;
   }
   else if (currentState == ESTABLISHED) {
     uint16_t tempAck;
@@ -63,13 +77,13 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       if (tempAck == newSeqNum) {
         lastAckRecv = tempAck;
         numAck = 0;
-      } else if (tempAck == lastRecvAck) {
+      } else if (tempAck == lastAckRecv) {
         numAck++;
         if (numAck >= 3) { // triplicateAck
           numAck = 0;
           // resend Packets
         }
-      } else if ( tempAck > lastRecvAck  ) {
+      } else if ( tempAck > lastAckRecv  ) {
       }
     }
  //   if (currentPacket->getHeaderLength != currentPacket->getLength);
@@ -84,7 +98,6 @@ void UDPPlusConnection::send(void *buf, size_t len, int flags) {
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
   outItems++;
   outConditionEmpty.notify_one();
-  }
 }
 
 void UDPPlusConnection::recv(int s, void *buf, size_t len) {
