@@ -17,7 +17,7 @@ using namespace std;
 UDPPlus::UDPPlus(int max_conn, int buf) {
 	max_connections = max_conn;
 	bufferSize = buf;
-	*connectionList = new UDPPlusConnection[max_conn];
+	connectionList = new UDPPlusConnection*[max_conn];
 	bounded = false;
 	waiting = false;
 	
@@ -34,6 +34,13 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 }
 
 UDPPlus::~UDPPlus() {
+  for (int i = 0; i < max_connections; i++) {
+    if (connectionList[i] != NULL) {
+      delete connectionList[i];
+      connectionList[i] = NULL;
+    }
+  }
+  delete listener;
 	delete connectionList;
 }
 
@@ -47,7 +54,7 @@ void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 	}
 
 	bind(sockfd, info, infoLength);
-//boost::thread listener(boost::bind(&UDPPlus::listen, this));
+  listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
 }
 
 UDPPlusConnection * UDPPlus::accept_p() {
@@ -104,7 +111,7 @@ int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
 }
 																 
 
-void UDPPlus::conn(const struct sockaddr *info, const socklen_t &infoLength) {
+UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -113,13 +120,17 @@ void UDPPlus::conn(const struct sockaddr *info, const socklen_t &infoLength) {
 		exit(0);
 	}
 	connect(sockfd, info, infoLength);
+  listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
+
 	int location = findSlot();
 	if (location == -1) {
 		printf("gone over connections");
+		return NULL;
 	}
   // build connection information
   UDPPlusConnection *active = new UDPPlusConnection(this, info, infoLength, bufferSize);
 	connectionList[location] = active;
+	return active;
 }
 
 int UDPPlus::findSlot() {

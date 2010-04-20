@@ -10,6 +10,8 @@
 
 #include "utility.h"
 
+using namespace boost::posix_time;
+
 class Packet {
 
 public:
@@ -49,11 +51,15 @@ public:
 
   size_t getData(void *outBuffer, size_t outBufferLength);
   size_t getLength();
+  void updateTime();
+  const ptime *getTime();
+
 
 
 private:
   char *buffer;
   size_t length;
+  ptime sendingTime;
 };
 
 #endif /* PACKET_H_ */

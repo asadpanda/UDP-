@@ -18,13 +18,12 @@ public:
   UDPPlus(int max_connection = 10, int bufferSize = 1024);
   virtual ~UDPPlus();
 
-  void conn(const struct sockaddr*, const socklen_t&);
-  void close();
+  UDPPlusConnection* conn(const struct sockaddr*, const socklen_t&);
 	
 	void bind_p(const struct sockaddr*, const socklen_t&);
 	UDPPlusConnection* accept_p();
 
-  ssize_t recv(int s, void *buf, size_t len, int flags);
+  void close();
 
 private:
   void listen();
@@ -37,7 +36,7 @@ private:
 	int sockfd;
 	int max_connections;
 	int bufferSize;
-	//boost::thread listener;
+	boost::thread *listener;
 	bool bounded;
 	
 	bool waiting;

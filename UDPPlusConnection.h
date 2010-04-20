@@ -11,6 +11,8 @@
 #include "utility.h"
 #include "Packet.h"
 
+using namespace boost::posix_time;
+
 enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK };
 
 class UDPPlus;
@@ -30,16 +32,20 @@ public:
   const struct sockaddr* getSockAddr(socklen_t &);
 	void send(void *, size_t, int);
 	void recv(int s, void *buf, size_t len);
+	void close();
 	
 private:
-	UDPPlusConnection();
+	time_duration timeout;
+	void timer();
   UDPPlus *mainHandler;
   State currentState;
 
+  boost::condition_variable timerCondition;
   boost::condition_variable inConditionEmpty;
   boost::condition_variable inConditionFull;
   boost::condition_variable outConditionEmpty;
   boost::condition_variable outConditionFull;
+  boost::mutex ackMutex;
   boost::mutex inBufferMutex;
   boost::mutex outBufferMutex;
   Packet **inBuffer; // for array of pointers
@@ -60,6 +66,8 @@ private:
 
 	struct sockaddr remoteAddress;
 	socklen_t remoteAddressLength;
+
+	boost::thread *clock;
 
 	friend class UDPPlus;
 };

@@ -7,17 +7,14 @@
 
 #include "UDPPlusConnection.h"
 
-UDPPlusConnection::UDPPlusConnection() {
-
-}
-
 UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
     const struct sockaddr *remote,
     const socklen_t &remoteSize,
     int &bufferSize,
     Packet *incomingConnection) {
 
-    this->mainHandler = mainHandler;
+  this->mainHandler = mainHandler;
+  timeout = milliseconds(500);
 
   memcpy(&remoteAddress, remote, remoteSize);
   this->remoteAddressLength = remoteSize;
@@ -49,9 +46,12 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
     currentState = SYN_RECIEVED;
     handlePacket(incomingConnection);
   }
+
+  clock = new boost::thread(boost::bind(&UDPPlusConnection::timer, this));
 }
 
 UDPPlusConnection::~UDPPlusConnection() {
+  close();
   for (int i = 0; i < inBufferSize; i++) {
     if ( inBuffer[i] != NULL) {
       delete inBuffer[i];
@@ -64,6 +64,16 @@ UDPPlusConnection::~UDPPlusConnection() {
   }
   delete inBuffer;
   delete outBuffer;
+}
+
+void UDPPlusConnection::close() {
+  //close;
+}
+
+void UDPPlusConnection::timer() {
+  boost::mutex::scoped_lock l(ackMutex);
+  timerCondition.timed_wait(l, timeout);
+  // timer
 }
 
 const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {

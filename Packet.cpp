@@ -148,3 +148,11 @@ size_t Packet::getData(void *outBuffer, size_t outBufferLength) {
 size_t Packet::getLength() {
   return length;
 }
+
+void Packet::updateTime() {
+  sendingTime = boost::posix_time::microsec_clock::universal_time();
+}
+
+const ptime * Packet::getTime() {
+  return &sendingTime;
+}
