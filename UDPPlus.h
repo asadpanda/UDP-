@@ -21,17 +21,18 @@ public:
   void close();
 	
 	void bind_p(struct addrinfo);
-	&UDPPlusConnection accept_p();
-
+	UDPPlusConnection* accept_p();
 
   ssize_t recv(int s, void *buf, size_t len, int flags);
 
 private:
+  void listen();
 	void recieve();
 	int findSlot();	
 	void send(int conn, Packet*);
+	int isHostConnected(struct addrinfo *connection, size_t length);
 
-	UDPPlusConnection *connectionList;
+	UDPPlusConnection **connectionList;
 	int sockfd;
 	int max_connections;
 	int bufferSize;

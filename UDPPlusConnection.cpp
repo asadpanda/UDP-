@@ -56,15 +56,17 @@ UDPPlusConnection::~UDPPlusConnection() {
 }
 
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
-  if (currentState == SYN_SENT)
   if (currentState == SYN_SENT) {
     if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
-      if (currentPacket->getAckNumber() == newSeqNum) {
-        newAckNumber = currentPacket->getSeqNumber();
+			uint16_t ack_num;
+			currentPacket->getAckNumber(ack_num);
+      if (ack_num == newSeqNum) {
+				uint16_t newAckNumber;
+        currentPacket->getSeqNumber(newAckNumber);
         currentState == ESTABLISHED;
       }
     }
-    delete Packet;
+    delete currentPacket;
   }
   else if (currentState == ESTABLISHED) {
     uint16_t tempAck;
@@ -73,13 +75,13 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       if (tempAck == newSeqNum) {
         lastAckRecv = tempAck;
         numAck = 0;
-      } else if (tempAck == lastRecvAck) {
+      } else if (tempAck == lastAckRecv) {
         numAck++;
         if (numAck >= 3) { // triplicateAck
           numAck = 0;
           // resend Packets
         }
-      } else if ( tempAck > lastRecvAck  ) {
+      } else if ( tempAck > lastAckRecv  ) {
       }
     }
  //   if (currentPacket->getHeaderLength != currentPacket->getLength);
@@ -94,7 +96,6 @@ void UDPPlusConnection::send(void *buf, size_t len, int flags) {
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
   outItems++;
   outConditionEmpty.notify_one();
-  }
 }
 
 void UDPPlusConnection::recv(int s, void *buf, size_t len) {
