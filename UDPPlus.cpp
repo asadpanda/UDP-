@@ -34,7 +34,7 @@ UDPPlus::~UDPPlus() {
 	delete connectionList;
 }
 
-void UDPPlus::bind_p(struct addrinfo) {
+void UDPPlus::bind_p(struct addrinfo bindAddr) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -42,8 +42,8 @@ void UDPPlus::bind_p(struct addrinfo) {
 		printf("already bounded");
 		exit(0);
 	}
-	bind(sockfd, addrinfo.ai_addr, sizeof(addrinfo.ai_addr));
-	boost::thread listener(boost::bind(&UDPPLus::listen));
+	bind(sockfd, bindAddr.ai_addr, sizeof(bindAddr.ai_addr));
+	listener = boost::thread(boost::bind(&UDPPlus::listen, this));
 }
 
 &UDPPlusConnection UDPPlus::accept_p() {

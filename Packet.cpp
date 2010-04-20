@@ -44,7 +44,6 @@ Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, char *firs
 
   clear();
   setField(field);
-  setSeqNumber(seqNumber, getField(SEQ));
   setAckNumber(ackNumber, getField(ACK));
   if ( getField(OPT) ) {
     setHeaderLength(DEFAULTHEADERSIZE + firstBufferLength);

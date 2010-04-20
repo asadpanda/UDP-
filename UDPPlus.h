@@ -20,7 +20,7 @@ public:
   void conn(struct addrinfo);
   void close();
 	
-	void bind_p();
+	void bind_p(struct addrinfo);
 	&UDPPlusConnection accept_p();
 
 
@@ -40,7 +40,7 @@ private:
 	
 	boost::mutex waitingMutex;
 	boost::condition_variable waitingCondition;
-	UDPPlusConnection *waitingConnection;
+	UDPPlusConnection **waitingConnection;
 	
 	friend class UDPPlusConnection;
 };

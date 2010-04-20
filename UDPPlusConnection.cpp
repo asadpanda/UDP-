@@ -12,6 +12,16 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler, struct sockaddr remot
   this->remote = remote;
   this->outbufferSize = bufferSize;
   this->inbufferSize = bufferSize;
+  inBufferBegin = 0;
+  inBufferEnd = 0;
+  outBufferBegin = 0;
+  outBufferEnd = 0;
+  newAckNum = 0;
+  newSeqNum = 0;
+  inItems = 0;
+  outItems = 0;
+  numAck = 0;
+  lastAckRecv = 0;
 
   inBuffer = new Packet*[inBufferSize];
   outBuffer = new Packet*[outBufferSize];
