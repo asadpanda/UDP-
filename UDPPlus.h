@@ -38,6 +38,7 @@ public:
 	void bind_p(const struct sockaddr*, const socklen_t&);
   
   // accepts a new incoming connection
+  // adds new connection to the connectionList
 	UDPPlusConnection* accept_p();
 
 	// methods to close UDP+ connections

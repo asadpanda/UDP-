@@ -68,7 +68,7 @@ UDPPlusConnection::~UDPPlusConnection() {
   delete outBuffer;
 }
 
-void UDPPlusConnection::close_connection() {
+void UDPPlusConnection::closeConnection() {
   //close;
 }
 
@@ -139,6 +139,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     case LAST_ACK:
     case TIME_WAIT:
     case CLOSED:
+      break;
   }
  //   if (currentPacket->getHeaderLength != currentPacket->getLength);
 }

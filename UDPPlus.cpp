@@ -67,7 +67,7 @@ UDPPlusConnection * UDPPlus::accept_p() {
 	waiting = false;
 	UDPPlusConnection *tempConnection = waitingConnection;
   int location = findSlot();
-  connectionList
+  connectionList[location] = tempConnection;
 	waitingConnection = NULL;	
 	return tempConnection;
 }
@@ -149,7 +149,7 @@ int UDPPlus::findSlot() {
 
 void UDPPlus::close_one(UDPPlusConnection &conn) {
   // close single connection
-	conn.close_connection();
+	conn.closeConnection();
 }
 
 void UDPPlus::close_all() {

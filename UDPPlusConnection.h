@@ -40,6 +40,7 @@ private:
 	bool checkIfAckable(const uint16_t &);
   UDPPlus *mainHandler;
   State currentState;
+  void handleEstablished(Packet *currentPacket);
 
   boost::condition_variable timerCondition;
   boost::condition_variable inConditionEmpty;
