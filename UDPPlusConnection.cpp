@@ -68,7 +68,7 @@ UDPPlusConnection::~UDPPlusConnection() {
   delete outBuffer;
 }
 
-void UDPPlusConnection::close() {
+void UDPPlusConnection::close_connection() {
   //close;
 }
 

@@ -4,7 +4,6 @@
  *  Created on: Apr 15, 2010
  *      Author: Asad Saeed, Adam Darrah
  *
- *      currently only supports a single connection.
  */
 
 #include "UDPPlus.h"
@@ -25,6 +24,7 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 	for(int i=0; i < max_conn; i++)
 		connectionList[i] = NULL;
 	
+  // create UDP socket to work with IPv4 and IPv6
 	sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if(sockfd == -1) {
 		// throw error
@@ -34,6 +34,8 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 }
 
 UDPPlus::~UDPPlus() {
+  // close all open connections
+  close_all();
   for (int i = 0; i < max_connections; i++) {
     if (connectionList[i] != NULL) {
       delete connectionList[i];
@@ -119,6 +121,7 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &i
 		printf("already bounded");
 		exit(0);
 	}
+  // connect will bind a socket
 	connect(sockfd, info, infoLength);
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
 
@@ -141,6 +144,18 @@ int UDPPlus::findSlot() {
 	return -1;
 }	
 
-void UDPPlus::close() {
-  // close connection
+void UDPPlus::close_one(UDPPlusConnection &conn) {
+  // close single connection
+	conn.close_connection();
+}
+
+void UDPPlus::close_all() {
+  // close all connections
+	for(int i=0; i < max_connections; i++) {
+		if(connectionList[i] != NULL) {
+			close_one(*connectionList[i]);
+		}
+	}
+	// close the socket
+	close(sockfd);
 }
