@@ -66,6 +66,8 @@ UDPPlusConnection * UDPPlus::accept_p() {
 		waitingCondition.wait(l);
 	waiting = false;
 	UDPPlusConnection *tempConnection = waitingConnection;
+  int location = findSlot();
+  connectionList
 	waitingConnection = NULL;	
 	return tempConnection;
 }
@@ -90,6 +92,7 @@ void UDPPlus::listen() {
 				Packet *tempPacket = new Packet(buffer, length);
 				if (tempPacket->getField(Packet::SYN)) {
 					waitingConnection = new UDPPlusConnection(this, &connection, connectionLength, bufferSize, tempPacket);
+          waiting = false;
 					waitingCondition.notify_one();
 				} else {
 					delete tempPacket;

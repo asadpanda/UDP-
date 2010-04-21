@@ -37,7 +37,7 @@ public:
   // starts a listener thread to listen for incoming packets
 	void bind_p(const struct sockaddr*, const socklen_t&);
   
-  
+  // accepts a new incoming connection
 	UDPPlusConnection* accept_p();
 
 	// methods to close UDP+ connections
