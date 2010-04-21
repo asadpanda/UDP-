@@ -13,7 +13,7 @@
 
 using namespace boost::posix_time;
 
-enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK };
+enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK, TIME_WAIT, CLOSED };
 
 class UDPPlus;
 
@@ -32,7 +32,7 @@ public:
   const struct sockaddr* getSockAddr(socklen_t &);
 	void send(void *, size_t, int);
 	void recv(int s, void *buf, size_t len);
-	void close_connection();
+	void closeConnection();
 	
 private:
 	time_duration timeout;

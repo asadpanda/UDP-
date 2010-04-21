@@ -53,7 +53,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
 }
 
 UDPPlusConnection::~UDPPlusConnection() {
-  close();
+  closeConnection();
   for (int i = 0; i < inBufferSize; i++) {
     if ( inBuffer[i] != NULL) {
       delete inBuffer[i];
@@ -84,75 +84,101 @@ const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
 }
 
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
-  if (currentState == LISTEN) {
-    if (currentPacket->getField(Packet::SYN)) {
-     currentPacket->getSeqNumber(newAckNum);
-     newSeqNum = rand() % 65536;
-     Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
-     boost::mutex::scoped_lock l(outBufferMutex);
-     outBuffer[outBufferEnd] = current;
-     outBufferEnd = (outBufferEnd + 1) % outBufferSize;
-     outItems++;
-     currentState = ESTABLISHED;
-    }
-  }
-  else if (currentState == SYN_SENT) {
-    if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
-			uint16_t ack_num;
-			currentPacket->getAckNumber(ack_num);
-      if (ack_num == newSeqNum) {
+  switch(currentState) {
+    case LISTEN:
+    {
+      if (currentPacket->getField(Packet::SYN)) {
         currentPacket->getSeqNumber(newAckNum);
-        newAckNum++;
+        newSeqNum = rand() % 65536;
+        Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
         boost::mutex::scoped_lock l(outBufferMutex);
-       // sendAck();
-        delete outBuffer[outBufferBegin];
-        outBuffer[outBufferBegin] = NULL;
-        outBufferBegin = (outBufferBegin + 1) % outBufferSize;
-        outItems--;
+        outBuffer[outBufferEnd] = current;
+        outBufferEnd = (outBufferEnd + 1) % outBufferSize;
+        outItems++;
+        //send packet
         currentState = ESTABLISHED;
       }
+      break;
     }
-    delete currentPacket;
-  }
-  else if (currentState == ESTABLISHED) {
-    uint16_t tempAck;
-    uint16_t tempSeq;
-    if (currentPacket->getAckNumber(tempAck)) {
-      uint16_t tempAckUpperBound = tempAck + outBufferSize;
-      if (tempAck == newSeqNum) {
-        lastAckRecv = tempAck;
-        numAck = 0;
-        //releaseBufferTill(newSeqNum);
-
-      } else if (tempAck == lastAckRecv) {
-        numAck++;
-        if (numAck >= 3) { // triplicateAck
-          numAck = 0;
-          // resend Packets
+    case SYN_SENT:
+    {
+      if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
+        uint16_t ack_num;
+        currentPacket->getAckNumber(ack_num);
+        if (ack_num == newSeqNum) {
+          currentPacket->getSeqNumber(newAckNum);
+          newAckNum++;
+          boost::mutex::scoped_lock l(outBufferMutex);
+            // sendAck();
+          delete outBuffer[outBufferBegin];
+          outBuffer[outBufferBegin] = NULL;
+          outBufferBegin = (outBufferBegin + 1) % outBufferSize;
+          outItems--;
+          currentState = ESTABLISHED;
         }
-      } else if ( checkIfAckable(tempAck) ) {
-        //releaseBufferTill(tempAck);
       }
+      delete currentPacket;
+      break;
     }
-    if (currentPacket->getField(Packet::FIN)) {
-        currentState = FIN_WAIT2;
-        Packet *current = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum++);
-    } // no items should be sendable now
-    if (currentPacket->getField(Packet::DATA)) {
-      boost::mutex::scoped_lock l(inBufferMutex);
-      if (inItems == inBufferSize) {
-        delete currentPacket;
+    case ESTABLISHED:
+    {
+      handleEstablished(currentPacket);
+      break;
+    }
+    case FIN_WAIT1: {
+        // fill holes, no extra packets after in
+        // wait for finack
+    }
+    case FIN_WAIT2: {
+        // fill holes, no extra packets out
+        // finack recieved
+    }
+    case CLOSE_WAIT:
+        // holes filled, send fin;
+    case CLOSING:
+    case LAST_ACK:
+    case TIME_WAIT:
+    case CLOSED:
+  }
+ //   if (currentPacket->getHeaderLength != currentPacket->getLength);
+}
+
+void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
+  uint16_t tempAck;
+  uint16_t tempSeq;
+  if (currentPacket->getAckNumber(tempAck)) {
+    uint16_t tempAckUpperBound = tempAck + outBufferSize;
+    if (tempAck == newSeqNum) {
+      lastAckRecv = tempAck;
+      //releaseBufferTill(newSeqNum);
+      
+    } else if (tempAck == lastAckRecv) {
+      numAck++;
+      if (numAck >= 3) { // triplicateAck
+        numAck = 0;
+          // resend Packets
+      }
+    } else if ( checkIfAckable(tempAck) ) {
+        //releaseBufferTill(tempAck);
+    }
+  }
+  if (currentPacket->getField(Packet::FIN)) {
+    currentState = CLOSE_WAIT;
+    Packet *current = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum++);
+  } // no items should be sendable now
+  if (currentPacket->getField(Packet::DATA)) {
+    boost::mutex::scoped_lock l(inBufferMutex);
+    if (inItems == inBufferSize) {
+      delete currentPacket;
         //discard Packet
-      }
-      else {
-        inBuffer[inBufferEnd] = currentPacket;
-        inBufferEnd = (inBufferEnd + 1) % inBufferSize;
-      }
     }
     else {
-      delete currentPacket;
+      inBuffer[inBufferEnd] = currentPacket;
+      inBufferEnd = (inBufferEnd + 1) % inBufferSize;
     }
- //   if (currentPacket->getHeaderLength != currentPacket->getLength);
+  }
+  else {
+    delete currentPacket;
   }
 }
 
