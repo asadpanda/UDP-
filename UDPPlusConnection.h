@@ -32,7 +32,7 @@ public:
   const struct sockaddr* getSockAddr(socklen_t &);
 	void send(void *, size_t, int);
 	void recv(int s, void *buf, size_t len);
-	void close();
+	void close_connection();
 	
 private:
 	time_duration timeout;
