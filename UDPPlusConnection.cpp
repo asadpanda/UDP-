@@ -60,7 +60,7 @@ UDPPlusConnection::~UDPPlusConnection() {
   closeConnection();
   for (int i = 0; i < inBufferSize; i++) {
     if ( inBuffer[i] != NULL) {
-      delete inBuffer[i];
+      delete i//nBuffer[i];
     }
   }
   for (int i = 0; i < outBufferSize; i++) {
@@ -77,9 +77,29 @@ void UDPPlusConnection::closeConnection() {
 }
 
 void UDPPlusConnection::timer() {
-  boost::mutex::scoped_lock l(ackMutex);
-  timerCondition.timed_wait(l, timeout);
-  // timer
+  // minimumTimout = maximumTimeout; // 3 minutes
+  boost::mutex::scoped_lock l(timerMutex);  // change to timerMutex
+  //while(true) {
+  timerCondition.timed_wait(l, minTimeout);
+  // minimumTimeout = maximumTimeout;
+  // if (outBuffer[outBufferBegin] != NULL)
+  //     if (tempTimeout = outBuffer[outBufferBegin]->timeStamp + timeout < currentTime) {
+  //        resendPacket();
+  //     }
+  //     tempTimeout = outBuffer[outBufferBegin]->timestamp + timeout - currentTime;
+  //     minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
+  //     // resend Packet
+  // }
+  // if (ackWaiting == 1) {
+  //   if (ackTimestamp + timeout < currentTime) {
+  //    sendAck();
+  //    ackWaiting = 0;
+  //   }
+  //   else {
+  //     tempTimeout = outBuffer[outBufferBegin]->timestamp + timeout - currentTime;
+  //     minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
+  // }
+  //
 }
 
 const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
