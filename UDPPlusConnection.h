@@ -36,6 +36,9 @@ public:
 	
 private:
 	time_duration timeout;
+  time_duration maximumTimeout;
+  ptime ackTimestamp;
+  uint8_t ackWaiting; 
 	void timer();
 	bool checkIfAckable(const uint16_t &);
   UDPPlus *mainHandler;
@@ -54,6 +57,7 @@ private:
   boost::mutex ackMutex;
   boost::mutex inBufferMutex;
   boost::mutex outBufferMutex;
+  boost::mutex timerMutex;
   Packet **inBuffer; // for array of pointers
   Packet **outBuffer;
 

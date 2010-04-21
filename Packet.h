@@ -52,7 +52,7 @@ public:
   size_t getData(void *outBuffer, size_t outBufferLength);
   size_t getLength();
   void updateTime();
-  const ptime *getTime();
+  ptime getTime();
 
   char* getBuffer();
 

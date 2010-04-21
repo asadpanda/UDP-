@@ -153,8 +153,8 @@ void Packet::updateTime() {
   sendingTime = boost::posix_time::microsec_clock::universal_time();
 }
 
-const ptime * Packet::getTime() {
-  return &sendingTime;
+ptime Packet::getTime() {
+  return sendingTime;
 }
 
 char* Packet::getBuffer() {

@@ -16,6 +16,8 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   srand(time(NULL));
   this->mainHandler = mainHandler;
   timeout = milliseconds(500);
+  ackWaiting = 0;
+  maximumTimeout = milliseconds(180000);
 
   memcpy(&remoteAddress, remote, remoteSize);
   this->remoteAddressLength = remoteSize;
@@ -60,7 +62,7 @@ UDPPlusConnection::~UDPPlusConnection() {
   closeConnection();
   for (int i = 0; i < inBufferSize; i++) {
     if ( inBuffer[i] != NULL) {
-      delete i//nBuffer[i];
+      delete inBuffer[i];
     }
   }
   for (int i = 0; i < outBufferSize; i++) {
@@ -77,29 +79,32 @@ void UDPPlusConnection::closeConnection() {
 }
 
 void UDPPlusConnection::timer() {
-  // minimumTimout = maximumTimeout; // 3 minutes
+  time_duration minimumTimeout = maximumTimeout; // 3 minutes
+  time_duration tempTimeout;
+  time_duration minTimeout;
+  ptime currentTime(microsec_clock::universal_time());
   boost::mutex::scoped_lock l(timerMutex);  // change to timerMutex
-  //while(true) {
-  timerCondition.timed_wait(l, minTimeout);
-  // minimumTimeout = maximumTimeout;
-  // if (outBuffer[outBufferBegin] != NULL)
-  //     if (tempTimeout = outBuffer[outBufferBegin]->timeStamp + timeout < currentTime) {
-  //        resendPacket();
-  //     }
-  //     tempTimeout = outBuffer[outBufferBegin]->timestamp + timeout - currentTime;
-  //     minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
-  //     // resend Packet
-  // }
-  // if (ackWaiting == 1) {
-  //   if (ackTimestamp + timeout < currentTime) {
-  //    sendAck();
-  //    ackWaiting = 0;
-  //   }
-  //   else {
-  //     tempTimeout = outBuffer[outBufferBegin]->timestamp + timeout - currentTime;
-  //     minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
-  // }
-  //
+  while(true) {
+    timerCondition.timed_wait(l, minimumTimeout);
+    minimumTimeout = maximumTimeout;
+    if (outBuffer[outBufferBegin] != NULL) {
+      if (outBuffer[outBufferBegin]->getTime() + timeout < currentTime) {
+      //  resendPacket();
+      }
+      tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
+      minTimeout = (minimumTimeout < tempTimeout) ? minimumTimeout : tempTimeout;
+      // resend Packet
+    }
+    if (ackWaiting == 1) {
+      if (ackTimestamp + timeout < currentTime) {
+      //  sendAck();
+        ackWaiting = 0;
+      } else {
+        tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
+        minTimeout = (minimumTimeout < tempTimeout) ? minimumTimeout : tempTimeout;
+      }
+    }
+  }
 }
 
 const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
