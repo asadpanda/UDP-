@@ -13,6 +13,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
     int &bufferSize,
     Packet *incomingConnection) {
 
+  srand(time(NULL));
   this->mainHandler = mainHandler;
   timeout = milliseconds(500);
 
@@ -30,20 +31,21 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   outItems = 0;
   numAck = 0;
   lastAckRecv = 0;
+  currentState = LISTEN;
 
   inBuffer = new Packet*[inBufferSize];
   outBuffer = new Packet*[outBufferSize];
   // build connection information
-  uint16_t randomValue = rand() % 65536;
+
 
   if (incomingConnection == NULL) {
-    Packet *current = new Packet(Packet::SYN, randomValue);
+    newSeqNum = rand() % 65536;
+    Packet *current = new Packet(Packet::SYN, newSeqNum++);
     outBuffer[outBufferEnd] = current;
     currentState = SYN_SENT;
    // send(outBufferEnd);
   }
   else {
-    currentState = SYN_RECIEVED;
     handlePacket(incomingConnection);
   }
 
@@ -80,15 +82,34 @@ const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
   addrLength = this->remoteAddressLength;
   return &remoteAddress;
 }
+
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
-  if (currentState == SYN_SENT) {
+  if (currentState == LISTEN) {
+    if (currentPacket->getField(Packet::SYN)) {
+     currentPacket->getSeqNumber(newAckNum);
+     newSeqNum = rand() % 65536;
+     Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
+     boost::mutex::scoped_lock l(outBufferMutex);
+     outBuffer[outBufferEnd] = current;
+     outBufferEnd = (outBufferEnd + 1) % outBufferSize;
+     outItems++;
+     currentState = ESTABLISHED;
+    }
+  }
+  else if (currentState == SYN_SENT) {
     if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
 			uint16_t ack_num;
 			currentPacket->getAckNumber(ack_num);
       if (ack_num == newSeqNum) {
-				uint16_t newAckNumber;
-        currentPacket->getSeqNumber(newAckNumber);
-        currentState == ESTABLISHED;
+        currentPacket->getSeqNumber(newAckNum);
+        newAckNum++;
+        boost::mutex::scoped_lock l(outBufferMutex);
+       // sendAck();
+        delete outBuffer[outBufferBegin];
+        outBuffer[outBufferBegin] = NULL;
+        outBufferBegin = (outBufferBegin + 1) % outBufferSize;
+        outItems--;
+        currentState = ESTABLISHED;
       }
     }
     delete currentPacket;
@@ -97,17 +118,39 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     uint16_t tempAck;
     uint16_t tempSeq;
     if (currentPacket->getAckNumber(tempAck)) {
+      uint16_t tempAckUpperBound = tempAck + outBufferSize;
       if (tempAck == newSeqNum) {
         lastAckRecv = tempAck;
         numAck = 0;
+        //releaseBufferTill(newSeqNum);
+
       } else if (tempAck == lastAckRecv) {
         numAck++;
         if (numAck >= 3) { // triplicateAck
           numAck = 0;
           // resend Packets
         }
-      } else if ( tempAck > lastAckRecv  ) {
+      } else if ( checkIfAckable(tempAck) ) {
+        //releaseBufferTill(tempAck);
       }
+    }
+    if (currentPacket->getField(Packet::FIN)) {
+        currentState = FIN_WAIT2;
+        Packet *current = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum++);
+    } // no items should be sendable now
+    if (currentPacket->getField(Packet::DATA)) {
+      boost::mutex::scoped_lock l(inBufferMutex);
+      if (inItems == inBufferSize) {
+        delete currentPacket;
+        //discard Packet
+      }
+      else {
+        inBuffer[inBufferEnd] = currentPacket;
+        inBufferEnd = (inBufferEnd + 1) % inBufferSize;
+      }
+    }
+    else {
+      delete currentPacket;
     }
  //   if (currentPacket->getHeaderLength != currentPacket->getLength);
   }
@@ -134,4 +177,21 @@ void UDPPlusConnection::recv(int s, void *buf, size_t len) {
   currentPacket->getData(buf, len);
   delete currentPacket;
   inConditionFull.notify_one();
+}
+
+bool UDPPlusConnection::checkIfAckable(const uint16_t &ackNumber) {
+  int currentAckNumber = ackNumber;
+  uint16_t bottomAck;
+  outBuffer[outBufferBegin]->getSeqNumber(bottomAck);
+  if ( (newSeqNum - 1) < bottomAck) {
+    if ( ((bottomAck <  currentAckNumber) && (currentAckNumber < 65536)) ||
+        ((0 <= currentAckNumber) && (currentAckNumber <= (int) newSeqNum)) )
+    {
+      return true;
+    }
+  }
+  else if ( ((bottomAck < ackNumber) && (ackNumber <= newSeqNum))) {
+    return true;
+  }
+  return false;
 }

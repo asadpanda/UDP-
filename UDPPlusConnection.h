@@ -37,6 +37,7 @@ public:
 private:
 	time_duration timeout;
 	void timer();
+	bool checkIfAckable(const uint16_t &);
   UDPPlus *mainHandler;
   State currentState;
 
