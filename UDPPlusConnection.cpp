@@ -53,7 +53,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
 }
 
 UDPPlusConnection::~UDPPlusConnection() {
-  close();
+  closeConnection();
   for (int i = 0; i < inBufferSize; i++) {
     if ( inBuffer[i] != NULL) {
       delete inBuffer[i];
@@ -95,6 +95,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         outBuffer[outBufferEnd] = current;
         outBufferEnd = (outBufferEnd + 1) % outBufferSize;
         outItems++;
+        //send packet
         currentState = ESTABLISHED;
       }
       break;
@@ -149,8 +150,7 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
     uint16_t tempAckUpperBound = tempAck + outBufferSize;
     if (tempAck == newSeqNum) {
       lastAckRecv = tempAck;
-      numAck = 0;
-        //releaseBufferTill(newSeqNum);
+      //releaseBufferTill(newSeqNum);
       
     } else if (tempAck == lastAckRecv) {
       numAck++;
@@ -163,7 +163,7 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
     }
   }
   if (currentPacket->getField(Packet::FIN)) {
-    currentState = FIN_WAIT2;
+    currentState = CLOSE_WAIT;
     Packet *current = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum++);
   } // no items should be sendable now
   if (currentPacket->getField(Packet::DATA)) {
