@@ -156,3 +156,7 @@ void Packet::updateTime() {
 const ptime * Packet::getTime() {
   return &sendingTime;
 }
+
+char* Packet::getBuffer() {
+  return buffer;
+}

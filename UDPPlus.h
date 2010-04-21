@@ -56,8 +56,8 @@ private:
   // if host is not connected, check SYN bits and process connection
   void listen();
 	
-  void recieve();
-  void send(int conn, Packet*);
+  // sends packet to given sockaddr
+  void send_p(struct sockaddr *connection, socklen_t len, Packet*);
 
   // searches connectionList for an open indicie
   // returns the indicies location if found

@@ -37,6 +37,10 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   outBuffer = new Packet*[outBufferSize];
   // build connection information
 
+  // initialize all slots in inBuffer/outBuffer to null
+  for (int i = 0; i < inBufferSize; i++) {
+    inBuffer[i] = outBuffer[i] = NULL;
+  }
 
   if (incomingConnection == NULL) {
     newSeqNum = rand() % 65536;
@@ -204,6 +208,28 @@ void UDPPlusConnection::recv(int s, void *buf, size_t len) {
   currentPacket->getData(buf, len);
   delete currentPacket;
   inConditionFull.notify_one();
+}
+
+void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
+  uint16_t init = 0;
+  int total = 0;
+  outBuffer[outBufferBegin]->getSeqNumber(init);
+  
+  if(init < newSeqNum) {
+    total = ((int)init + outBufferSize) - newSeqNum;
+  } else {
+    total = newSeqNum - (int)init;
+  }
+  total--;
+  int bufferLoc = outBufferBegin;
+  
+  for (int i = 0; i < total; i++) {
+    delete outBuffer[bufferLoc];
+    outItems--;
+    outBuffer[bufferLoc] = NULL;
+    bufferLoc = (bufferLoc + 1) % outBufferSize;
+  }
+  
 }
 
 bool UDPPlusConnection::checkIfAckable(const uint16_t &ackNumber) {

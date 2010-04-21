@@ -59,6 +59,11 @@ void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
 }
 
+void UDPPlus::send_p(struct sockaddr *connection, socklen_t len, Packet* p) {
+  sendto(sockfd, p->getBuffer(), p->getLength(), 0, connection, len);
+}
+
+
 UDPPlusConnection * UDPPlus::accept_p() {
 	boost::mutex::scoped_lock l(waitingMutex);
 	waiting = true;

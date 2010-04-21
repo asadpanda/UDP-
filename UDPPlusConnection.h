@@ -41,6 +41,10 @@ private:
   UDPPlus *mainHandler;
   State currentState;
   void handleEstablished(Packet *currentPacket);
+  
+  // loop through inBuffer and check the sequence numbers
+  // if sequence number is less than newSeqNum, delete from buffer
+  void releaseBufferTill(int newSeqNum);
 
   boost::condition_variable timerCondition;
   boost::condition_variable inConditionEmpty;

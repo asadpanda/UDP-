@@ -54,7 +54,7 @@ public:
   void updateTime();
   const ptime *getTime();
 
-
+  char* getBuffer();
 
 private:
   char *buffer;
