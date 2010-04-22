@@ -133,6 +133,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         outBufferEnd = (outBufferEnd + 1) % outBufferSize;
         outItems++;
         //send packet
+        mainHandler->send_p(&remoteAddress, remoteAddressLength, current);
         currentState = ESTABLISHED;
       }
       break;
@@ -147,6 +148,9 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
           newAckNum++;
           boost::mutex::scoped_lock l(outBufferMutex);
             // sendAck();
+          Packet temp = Packet(Packet::ACK, lowestValidSeq, newAckNum);
+          mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
+
           delete outBuffer[outBufferBegin];
           outBuffer[outBufferBegin] = NULL;
           outBufferBegin = (outBufferBegin + 1) % outBufferSize;
