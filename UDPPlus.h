@@ -80,6 +80,7 @@ private:
 	boost::mutex waitingMutex;
 	boost::condition_variable waitingCondition;
 	UDPPlusConnection *waitingConnection;
+  bool listenerDone;
 	
 	// UDPPlusConnecion object are friended so that
 	// these objects can call private UDPPlus methods

@@ -26,10 +26,10 @@ public:
   const static int SEQLOCATION = 2;
   const static int ACKLOCATION = 4;
 
+  int numAck;
+
   Packet(const Packet&);
   Packet(void *buffer, size_t length);
-  Packet(uint8_t field, uint16_t seqAckNumber, void *firstBuffer = 0,
-      size_t firstBufferLength = 0, void *secondBuffer = 0, size_t secondBufferLength = 0);
   Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer = 0,
       size_t firstBufferLength = 0, void *secondBuffer = 0, size_t secondBufferLength = 0);
   ~Packet();
@@ -43,7 +43,7 @@ public:
   void setAckNumber(uint16_t ackNumber, bool shouldSet=true);
 
 
-  size_t getOptField(char *optBuffer, size_t optBufferLength);
+  size_t getOptField(void *optBuffer, size_t optBufferLength);
 
   void clear();
 
@@ -56,6 +56,7 @@ public:
   ptime getTime();
 
   char* getBuffer();
+  
 
 private:
   char *buffer;
