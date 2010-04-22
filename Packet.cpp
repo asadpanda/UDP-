@@ -15,30 +15,17 @@ Packet::Packet(void *buffer, size_t length) {
 }
 
 Packet::Packet(const Packet &original) {
+  numAck = original.numAck;
   buffer = new char[original.length];
   length = original.length;
   memcpy(buffer, original.buffer, length);
 }
 
-Packet::Packet(uint8_t field, uint16_t seqAckNumber, void *firstBuffer,
-               size_t firstBufferLength, void *secondBuffer, size_t secondBufferLength) {
-
-  buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
-  length = DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength;
-
-  int seqNumber = seqAckNumber;
-  int ackNumber = 0;
-  if (field & ACK == ACK) {
-    ackNumber = seqAckNumber;
-    seqNumber = 0;
-  }
-
-  Packet(field, seqNumber, ackNumber, firstBuffer, firstBufferLength, secondBuffer, secondBufferLength);
-}
 
 Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer,
     size_t firstBufferLength, void *secondBuffer, size_t secondBufferLength)
 {
+  numAck = 0;
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
   length = DEFAULTHEADERSIZE + 2 + firstBufferLength + secondBufferLength;
 
@@ -110,7 +97,7 @@ void Packet::setAckNumber(uint16_t ackNumber, bool shouldSet) {
   }
 }
 
-size_t Packet::getOptField(char *optBuffer, size_t optBufferLength) {
+size_t Packet::getOptField(void *optBuffer, size_t optBufferLength) {
   size_t optLength = getHeaderLength() - DEFAULTHEADERSIZE;
 
   if (optLength > optBufferLength)

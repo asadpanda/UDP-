@@ -27,7 +27,6 @@ public:
 
   virtual ~UDPPlusConnection();
 
-  void handlePacket(Packet *currentPacket);
 	
   const struct sockaddr* getSockAddr(socklen_t &);
   
@@ -38,29 +37,37 @@ public:
 	void closeConnection();
 	
 private:
+  void timer();
+
+  void handlePacket(Packet *currentPacket);
+  void handleEstablished(Packet *currentPacket);
+  bool handleAck(Packet *currentPacket);
+  bool handleSack(Packet *currentPacket);
+  bool handleData(Packet *currentPacket);
+  void sendSack();
+  void send_packet(Packet*);
+  // loop through inBuffer and check the sequence numbers
+  // if sequence number is less than newSeqNum, delete from buffer
+  void releaseBufferTill(int newSeqNum);
+  uint16_t lowestValidSeq();
+  bool checkIfAckable(const uint16_t &);
+  int processInBuffer();
+
+  UDPPlus *mainHandler;
+  State currentState;
+  
+  boost::thread *clock;
 	time_duration timeout;
   time_duration maximumTimeout;
   ptime ackTimestamp;
   uint8_t ackWaiting; 
-	void timer();
-	bool checkIfAckable(const uint16_t &);
-  void processInBuffer();
-  UDPPlus *mainHandler;
-  State currentState;
-  void handleEstablished(Packet *currentPacket);
-  
-  // 
-  void send_packet(Packet*);
-  
-  // loop through inBuffer and check the sequence numbers
-  // if sequence number is less than newSeqNum, delete from buffer
-  void releaseBufferTill(int newSeqNum);
 
   boost::condition_variable timerCondition;
   boost::condition_variable inConditionEmpty;
   boost::condition_variable inConditionFull;
   boost::condition_variable outConditionEmpty;
   boost::condition_variable outConditionFull;
+  boost::mutex sharedMutex;
   boost::mutex ackMutex;
   boost::mutex inBufferMutex;
   boost::mutex outBufferMutex;
@@ -75,6 +82,7 @@ private:
   uint16_t outBufferBegin;
   uint16_t inItems;
   uint16_t outItems;
+  int8_t inBufferDelta;
   
   uint16_t newAckNum;
   uint16_t newSeqNum;
@@ -83,8 +91,6 @@ private:
 
 	struct sockaddr remoteAddress;
 	socklen_t remoteAddressLength;
-
-	boost::thread *clock;
 
 	friend class UDPPlus;
 };
