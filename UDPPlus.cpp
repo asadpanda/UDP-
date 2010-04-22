@@ -46,7 +46,7 @@ UDPPlus::~UDPPlus() {
 	delete connectionList;
 }
 
-void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
+void UDPPlus::bind_p(const struct sockaddr_in *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -55,7 +55,7 @@ void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 		exit(0);
 	}
 
-	bind(sockfd, info, infoLength);
+	bind(sockfd, (struct sockaddr *)info, infoLength);
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
 }
 
@@ -73,7 +73,7 @@ UDPPlusConnection * UDPPlus::accept_p() {
 	UDPPlusConnection *tempConnection = waitingConnection;
   int location = findSlot();
   connectionList[location] = tempConnection;
-	waitingConnection = NULL;	
+	waitingConnection = NULL;
 	return tempConnection;
 }
 
@@ -83,7 +83,6 @@ void UDPPlus::listen() {
 	struct sockaddr connection;
 	socklen_t connectionLength;
 	while(true) {
-
 		memset(&connection, 0, sizeof(connection));
 		connectionLength = sizeof(connection);
 		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
@@ -121,7 +120,7 @@ int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
 }
 																 
 
-UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &infoLength) {
+UDPPlusConnection* UDPPlus::conn(const struct sockaddr_in *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -130,7 +129,7 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &i
 		exit(0);
 	}
   // connect will bind a socket
-	connect(sockfd, info, infoLength);
+	connect(sockfd, (struct sockaddr *)info, infoLength);
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
 
 	int location = findSlot();
@@ -139,7 +138,7 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &i
 		return NULL;
 	}
   // build connection information
-  UDPPlusConnection *active = new UDPPlusConnection(this, info, infoLength, bufferSize);
+  UDPPlusConnection *active = new UDPPlusConnection(this, (struct sockaddr *)info, infoLength, bufferSize);
 	connectionList[location] = active;
 	return active;
 }

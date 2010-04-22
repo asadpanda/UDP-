@@ -31,11 +31,11 @@ public:
   // binds a socket to be used for connection
   // builds a UDPPlusConnection object and stores in connectionList
   // returns pointer to UDPPlusconnection object
-  UDPPlusConnection* conn(const struct sockaddr*, const socklen_t&);
+  UDPPlusConnection* conn(const struct sockaddr_in*, const socklen_t&);
 	
   // binds a port to be listened to
   // starts a listener thread to listen for incoming packets
-	void bind_p(const struct sockaddr*, const socklen_t&);
+	void bind_p(const struct sockaddr_in*, const socklen_t&);
   
   // accepts a new incoming connection
   // adds new connection to the connectionList
