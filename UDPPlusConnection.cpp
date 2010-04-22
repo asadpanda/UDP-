@@ -90,13 +90,10 @@ void UDPPlusConnection::timer() {
     minimumTimeout = maximumTimeout;
     if (outBuffer[outBufferBegin] != NULL) {
       if (outBuffer[outBufferBegin]->getTime() + timeout < currentTime) {
-        outBuffer[outBufferBegin]->setAckNumber(newAckNum);
-        mainHandler->send_p(&remoteAddress, remoteAddressLength, outBuffer[outBufferEnd]);
+        send_packet(outBuffer[outBufferBegin]);
       }
       tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
       minTimeout = (minimumTimeout < tempTimeout) ? minimumTimeout : tempTimeout;
-      outBuffer[outBufferBegin]->setAckNumber(newAckNum);
-      mainHandler->send_p(&remoteAddress, remoteAddressLength, outBuffer[outBufferEnd]);
     }
     if (ackWaiting == 1) {
       if (ackTimestamp + timeout < currentTime) {
@@ -113,6 +110,12 @@ void UDPPlusConnection::timer() {
       }
     }
   }
+}
+
+void UDPPlusConnection::send_packet(Packet * temp) {
+  temp->setAckNumber(newAckNum);
+  temp->updateTime();
+  mainHandler->send_p(&remoteAddress, remoteAddressLength, temp);
 }
 
 const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
@@ -133,7 +136,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         outBufferEnd = (outBufferEnd + 1) % outBufferSize;
         outItems++;
         //send packet
-        mainHandler->send_p(&remoteAddress, remoteAddressLength, current);
+        send_packet(current);
         currentState = ESTABLISHED;
       }
       break;
@@ -147,7 +150,10 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
           currentPacket->getSeqNumber(newAckNum);
           newAckNum++;
           boost::mutex::scoped_lock l(outBufferMutex);
-            // sendAck();
+          
+          // sendAck();
+          uint16_t lowestValidSeq;
+          outBuffer[outBufferBegin]->getSeqNumber(lowestValidSeq);
           Packet temp = Packet(Packet::ACK, lowestValidSeq, newAckNum);
           mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
 
@@ -192,16 +198,20 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
     uint16_t tempAckUpperBound = tempAck + outBufferSize;
     if (tempAck == newSeqNum) {
       lastAckRecv = tempAck;
-      //releaseBufferTill(newSeqNum);
+      releaseBufferTill(newSeqNum);
       
-    } else if (tempAck == lastAckRecv) {
+    }
+    else if (tempAck == lastAckRecv) {
       numAck++;
       if (numAck >= 3) { // triplicateAck
         numAck = 0;
-        sendAck()
+        send_packet(outBuffer[outBufferBegin]);
       }
-    } else if ( checkIfAckable(tempAck) ) {
-        //releaseBufferTill(tempAck);
+    }
+    else if ( checkIfAckable(tempAck) ) {
+        lastAckRecv = tempAck;
+        numAck = 0;
+        releaseBufferTill(tempAck);
     }
   }
   if (currentPacket->getField(Packet::FIN)) {
@@ -230,6 +240,7 @@ void UDPPlusConnection::send(void *buf, size_t len, int flags) {
     outConditionFull.wait(l);
   Packet *currentPacket = new Packet(Packet::DATA | Packet::ACK, newSeqNum++, newAckNum , buf, len);
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
+  mainHandler->send_p(&remoteAddress, remoteAddressLength, currentPacket);
   outItems++;
   outConditionEmpty.notify_one();
 }
