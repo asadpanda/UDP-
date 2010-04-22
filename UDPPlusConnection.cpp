@@ -6,6 +6,7 @@
  */
 
 #include "UDPPlusConnection.h"
+#include "UDPPlus.h"
 
 UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
     const struct sockaddr *remote,
@@ -89,15 +90,22 @@ void UDPPlusConnection::timer() {
     minimumTimeout = maximumTimeout;
     if (outBuffer[outBufferBegin] != NULL) {
       if (outBuffer[outBufferBegin]->getTime() + timeout < currentTime) {
-      //  resendPacket();
+        outBuffer[outBufferBegin]->setAckNumber(newAckNum);
+        mainHandler->send_p(&remoteAddress, remoteAddressLength, outBuffer[outBufferEnd]);
       }
       tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
       minTimeout = (minimumTimeout < tempTimeout) ? minimumTimeout : tempTimeout;
-      // resend Packet
+      outBuffer[outBufferBegin]->setAckNumber(newAckNum);
+      mainHandler->send_p(&remoteAddress, remoteAddressLength, outBuffer[outBufferEnd]);
     }
     if (ackWaiting == 1) {
       if (ackTimestamp + timeout < currentTime) {
-      //  sendAck();
+        uint16_t lowestValidSeq;
+        outBuffer[outBufferBegin]->getSeqNumber(lowestValidSeq);
+        
+        Packet temp = Packet(Packet::ACK, lowestValidSeq, newAckNum);
+        mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
+        
         ackWaiting = 0;
       } else {
         tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
@@ -216,7 +224,7 @@ void UDPPlusConnection::send(void *buf, size_t len, int flags) {
   boost::mutex::scoped_lock l(outBufferMutex);
   while (outItems == outBufferSize)
     outConditionFull.wait(l);
-  Packet *currentPacket = new Packet(Packet::DATA, newSeqNum++, buf, len);
+  Packet *currentPacket = new Packet(Packet::DATA | Packet::ACK, newSeqNum++, newAckNum , buf, len);
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
   outItems++;
   outConditionEmpty.notify_one();

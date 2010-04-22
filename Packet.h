@@ -38,8 +38,8 @@ public:
   void setField(uint8_t field, bool value=true);
   bool getSeqNumber(uint16_t &seqNumber);
   bool getAckNumber(uint16_t &ackNumber);
-  void setSeqNumber(uint16_t seqNumber, bool shouldSet=false);
-  void setAckNumber(uint16_t ackNumber, bool shouldSet);
+  void setSeqNumber(uint16_t seqNumber, bool shouldSet=true);
+  void setAckNumber(uint16_t ackNumber, bool shouldSet=true);
 
 
   size_t getOptField(char *optBuffer, size_t optBufferLength);
