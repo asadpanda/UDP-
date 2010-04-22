@@ -198,16 +198,20 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
     uint16_t tempAckUpperBound = tempAck + outBufferSize;
     if (tempAck == newSeqNum) {
       lastAckRecv = tempAck;
-      //releaseBufferTill(newSeqNum);
+      releaseBufferTill(newSeqNum);
       
-    } else if (tempAck == lastAckRecv) {
+    }
+    else if (tempAck == lastAckRecv) {
       numAck++;
       if (numAck >= 3) { // triplicateAck
         numAck = 0;
-          // resend Packets
+        send_packet(outBuffer[outBufferBegin]);
       }
-    } else if ( checkIfAckable(tempAck) ) {
-        //releaseBufferTill(tempAck);
+    }
+    else if ( checkIfAckable(tempAck) ) {
+        lastAckRecv = tempAck;
+        numAck = 0;
+        releaseBufferTill(tempAck);
     }
   }
   if (currentPacket->getField(Packet::FIN)) {
