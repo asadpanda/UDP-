@@ -85,19 +85,16 @@ void Packet::setField(uint8_t field, bool value) {
   }
 }
 
-bool Packet::getSeqNumber(uint16_t &seqNumber) {
-    memcpy(&seqNumber, buffer + SEQLOCATION, sizeof(uint16_t));
-    seqNumber = ntohs(seqNumber);
-    return true;
+uint16_t Packet::getSeqNumber() {
+  uint16_t seqNumber;
+  memcpy(&seqNumber, buffer + SEQLOCATION, sizeof(uint16_t));
+  return( ntohs(seqNumber) );
 }
 
-bool Packet::getAckNumber(uint16_t &ackNumber) {
-  if (getField(ACK)) {
-    memcpy(&ackNumber, buffer + ACKLOCATION, sizeof(uint16_t));
-    ackNumber = ntohs(ackNumber);
-    return true;
-  }
-  return false;
+uint16_t Packet::getAckNumber() {
+  uint16_t ackNumber;
+  memcpy(&ackNumber, buffer + ACKLOCATION, sizeof(uint16_t));
+  return( ntohs(ackNumber) );
 }
 
 void Packet::setSeqNumber(uint16_t seqNumber, bool shouldSet) {
