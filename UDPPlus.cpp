@@ -78,6 +78,7 @@ UDPPlusConnection * UDPPlus::accept_p() {
 }
 
 void UDPPlus::listen() {
+  // TODO :: connection is ambiguous
 	char buffer[5000];
 	int location;
 	struct sockaddr connection;
