@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
       // start waiting for an incoming connection
       // if a new host is detected, listener thread will direct it to accept
       printf("Waiting for client connection...");
-      //conn->accept_p();
+      conn->accept_p();
       
       delete conn;
       

@@ -19,6 +19,7 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 	connectionList = new UDPPlusConnection*[max_conn];
 	bounded = false;
 	waiting = false;
+  listenerDone = false;
 	
 	// make all slots initially null
 	for(int i=0; i < max_conn; i++)
@@ -42,7 +43,7 @@ UDPPlus::~UDPPlus() {
       connectionList[i] = NULL;
     }
   }
-  delete listener;
+  listener->
 	delete connectionList;
 }
 
@@ -81,6 +82,7 @@ void UDPPlus::listen() {
 	char buffer[5000];
 	int location;
 	struct sockaddr connection;
+  fprintf(stderr, "new thread");
 	socklen_t connectionLength;
 	while(true) {
 		memset(&connection, 0, sizeof(connection));
@@ -91,7 +93,7 @@ void UDPPlus::listen() {
 			connectionList[location]->handlePacket(new Packet(buffer, length));
 		}
 		else {
-			boost::mutex::scoped_lock l(waitingMutex);
+			//boost::mutex::scoped_lock l(waitingMutex);
 			if (waiting == true) {
 				Packet *tempPacket = new Packet(buffer, length);
 				if (tempPacket->getField(Packet::SYN)) {

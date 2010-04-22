@@ -34,6 +34,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   numAck = 0;
   lastAckRecv = 0;
   currentState = LISTEN;
+  maxAckNumber = -1;
 
   inBuffer = new Packet*[inBufferSize];
   outBuffer = new Packet*[outBufferSize];
@@ -162,7 +163,14 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     }
     case ESTABLISHED:
     {
-      handleEstablished(currentPacket);
+      if (handleAck(currentPacket)) {
+        handleData(currentPacket)
+      }
+      else {
+        handleFin(currentPacket);
+        currentState = CLOSE_WAIT;
+      }
+
       break;
     }
     case FIN_WAIT1: {
@@ -170,6 +178,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         // wait for finack
     }
     case FIN_WAIT2: {
+      // wait for finack
         // fill holes, no extra packets out
         // finack recieved
     }
@@ -192,12 +201,7 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
     
   // } else { delete currentPacket; }  
   //}
-  //if (currentPacket->getField(Packet::FIN)) {
-  //  currentState = CLOSE_WAIT;
-  //  Packet *current = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum++);
-  //} // no items should be sendable now
-  //else {
-  //  delete currentPacket;
+
   // }
 }
 
@@ -303,7 +307,7 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
   uint16_t bottomAck = newAckNum - 1;
   
   if (currentAckNumber < bottomAck) {
-    currentAckNumber + Packet::MAXSIZE;
+    currentAckNumber += Packet::MAXSIZE;
   }
   int index = currentAckNumber - bottomAck;
   if (index < inBufferSize) {
@@ -324,9 +328,27 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
   }
   else { return false; }
   return true;
-    
 }
 
+bool UDPPlusConnection::handleFin(Packet *currentPacket) {
+  if (!currentPacket->getField(Packet::FIN) || currentPacket->getField(Packet::DATA)) {
+    return false;
+  }
+  int currentAckNumber = currentPacket->getSeqNumber();
+  if (currentAckNumber < newAckNum) {
+    currentAckNumber += Packet::MAXSIZE;
+  }
+  int index = currentAckNumber - newAckNum;
+  if (index < inBufferSize) {
+    if( inBuffer[inBufferBegin + index] != NULL ) {
+      delete inBuffer[inBufferBegin + index];
+    }
+    inBuffer[inBufferBegin + index] = currentPacket;
+    maxAckNumber = currentAckNumber;
+    return true;
+  }
+  return false;
+}
 int UDPPlusConnection::processInBuffer() {
   bool done = false;
   int count = 0;
@@ -405,7 +427,7 @@ bool UDPPlusConnection::checkIfAckable(const uint16_t &ackNumber) {
   int bottomAck = tempAck;
 
   if (currentAckNumber < bottomAck)
-    currentAckNumber + Packet::MAXSIZE;
+    currentAckNumber += Packet::MAXSIZE;
   
   if (outItems < (currentAckNumber - bottomAck))
     return true;

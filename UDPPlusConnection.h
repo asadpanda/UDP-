@@ -44,6 +44,7 @@ private:
   bool handleAck(Packet *currentPacket);
   bool handleSack(Packet *currentPacket);
   bool handleData(Packet *currentPacket);
+  bool handleFin(Packet *currentPacket);
   void sendSack();
   void send_packet(Packet*);
   // loop through inBuffer and check the sequence numbers
@@ -88,6 +89,7 @@ private:
   uint16_t newSeqNum;
   uint8_t numAck;
   uint16_t lastAckRecv;
+  int maxAckNumber;
 
 	struct sockaddr remoteAddress;
 	socklen_t remoteAddressLength;
