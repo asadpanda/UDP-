@@ -46,7 +46,7 @@ UDPPlus::~UDPPlus() {
 	delete connectionList;
 }
 
-void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
+void UDPPlus::bind_p(const struct sockaddr_in *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -55,7 +55,7 @@ void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 		exit(0);
 	}
 
-	bind(sockfd, info, infoLength);
+	bind(sockfd, (struct sockaddr *)info, infoLength);
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
 }
 
