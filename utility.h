@@ -15,6 +15,7 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <deque>
 
 #include <stdio.h>
 #include <stdint.h>

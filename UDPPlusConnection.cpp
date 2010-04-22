@@ -25,9 +25,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   this->outBufferSize = bufferSize;
   this->inBufferSize = bufferSize;
   inBufferBegin = 0;
-  inBufferEnd = 0;
   outBufferBegin = 0;
-  outBufferEnd = 0;
   newAckNum = 0;
   newSeqNum = 0;
   inItems = 0;
@@ -46,9 +44,9 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   }
 
   if (incomingConnection == NULL) {
-    newSeqNum = rand() % 65536;
+    newSeqNum = rand() % Packet::MAXSIZE;
     Packet *current = new Packet(Packet::SYN, newSeqNum++);
-    outBuffer[outBufferEnd] = current;
+    outBuffer[(outBufferBegin + outItems) % outBufferSize] = current;
     currentState = SYN_SENT;
    // send(outBufferEnd);
   }
@@ -97,8 +95,7 @@ void UDPPlusConnection::timer() {
     }
     if (ackWaiting == 1) {
       if (ackTimestamp + timeout < currentTime) {
-        uint16_t lowestValidSeq;
-        outBuffer[outBufferBegin]->getSeqNumber(lowestValidSeq);
+        uint16_t lowestValidSeq = outBuffer[outBufferBegin]->getSeqNumber();
         
         Packet temp = Packet(Packet::ACK, lowestValidSeq, newAckNum);
         mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
@@ -128,12 +125,11 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     case LISTEN:
     {
       if (currentPacket->getField(Packet::SYN)) {
-        currentPacket->getSeqNumber(newAckNum);
-        newSeqNum = rand() % 65536;
+        newAckNum = currentPacket->getSeqNumber();
+        newSeqNum = rand() % Packet::MAXSIZE;
         Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
         boost::mutex::scoped_lock l(outBufferMutex);
-        outBuffer[outBufferEnd] = current;
-        outBufferEnd = (outBufferEnd + 1) % outBufferSize;
+        outBuffer[(outBufferBegin + outItems) % outBufferSize] = current;
         outItems++;
         //send packet
         send_packet(current);
@@ -144,16 +140,13 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     case SYN_SENT:
     {
       if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
-        uint16_t ack_num;
-        currentPacket->getAckNumber(ack_num);
+        uint16_t ack_num = currentPacket->getAckNumber();
         if (ack_num == newSeqNum) {
-          currentPacket->getSeqNumber(newAckNum);
-          newAckNum++;
+          newAckNum = currentPacket->getSeqNumber() + 1;
           boost::mutex::scoped_lock l(outBufferMutex);
           
           // sendAck();
-          uint16_t lowestValidSeq;
-          outBuffer[outBufferBegin]->getSeqNumber(lowestValidSeq);
+          uint16_t lowestValidSeq = outBuffer[outBufferBegin]->getSeqNumber();
           Packet temp = Packet(Packet::ACK, lowestValidSeq, newAckNum);
           mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
 
@@ -192,10 +185,8 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
 }
 
 void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
-  uint16_t tempAck;
-  uint16_t tempSeq;
-  if (currentPacket->getAckNumber(tempAck)) {
-    uint16_t tempAckUpperBound = tempAck + outBufferSize;
+  if (currentPacket->getField(Packet::ACK)) {
+    int tempAck = currentPacket->getAckNumber();
     if (tempAck == newSeqNum) {
       lastAckRecv = tempAck;
       releaseBufferTill(newSeqNum);
@@ -214,23 +205,45 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
         releaseBufferTill(tempAck);
     }
   }
+
+  if (currentPacket->getField(Packet::DATA)) {
+    boost::mutex::scoped_lock l(inBufferMutex);
+    
+    int currentAckNumber = currentPacket->getSeqNumber();
+    uint16_t bottomAck = newAckNum - 1;
+    
+    if (currentAckNumber < bottomAck) {
+      currentAckNumber + Packet::MAXSIZE;
+    }
+    int index = currentAckNumber - bottomAck;
+    if (index < inBufferSize) {
+      index = (index + inBufferBegin) % inBufferSize;
+      if (inBuffer[index] != NULL) { delete currentPacket; }
+      inBuffer[index] = currentPacket;
+      processInBuffer();
+    } else { delete currentPacket; }  
+  }
   if (currentPacket->getField(Packet::FIN)) {
     currentState = CLOSE_WAIT;
     Packet *current = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum++);
   } // no items should be sendable now
-  if (currentPacket->getField(Packet::DATA)) {
-    boost::mutex::scoped_lock l(inBufferMutex);
-    if (inItems == inBufferSize) {
-      delete currentPacket;
-        //discard Packet
-    }
-    else {
-      inBuffer[inBufferEnd] = currentPacket;
-      inBufferEnd = (inBufferEnd + 1) % inBufferSize;
-    }
-  }
   else {
     delete currentPacket;
+  }
+}
+
+void UDPPlusConnection::processInBuffer() {
+  bool done = false;
+  int currentPosition = inBufferBegin;
+  while ( !done ) {
+    if (inBuffer[currentPosition] != NULL) {
+      inQueue.push_back(inBuffer[currentPosition]);
+      inBuffer[currentPosition] = NULL;
+    }
+    else {
+      done = true;
+    }
+    currentPosition = (currentPosition + 1) % inBufferSize;
   }
 }
 
@@ -261,7 +274,7 @@ void UDPPlusConnection::recv(int s, void *buf, size_t len) {
 void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   uint16_t init = 0;
   int total = 0;
-  outBuffer[outBufferBegin]->getSeqNumber(init);
+  init = outBuffer[outBufferBegin]->getSeqNumber();
   
   if(init < newSeqNum) {
     total = ((int)init + outBufferSize) - newSeqNum;
@@ -282,17 +295,13 @@ void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
 
 bool UDPPlusConnection::checkIfAckable(const uint16_t &ackNumber) {
   int currentAckNumber = ackNumber;
-  uint16_t bottomAck;
-  outBuffer[outBufferBegin]->getSeqNumber(bottomAck);
-  if ( (newSeqNum - 1) < bottomAck) {
-    if ( ((bottomAck <  currentAckNumber) && (currentAckNumber < 65536)) ||
-        ((0 <= currentAckNumber) && (currentAckNumber <= (int) newSeqNum)) )
-    {
-      return true;
-    }
-  }
-  else if ( ((bottomAck < ackNumber) && (ackNumber <= newSeqNum))) {
+  uint16_t tempAck = outBuffer[outBufferBegin]->getSeqNumber();
+  int bottomAck = tempAck;
+
+  if (currentAckNumber < bottomAck)
+    currentAckNumber + Packet::MAXSIZE;
+  
+  if (outItems < (currentAckNumber - bottomAck))
     return true;
-  }
   return false;
 }

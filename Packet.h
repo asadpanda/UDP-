@@ -15,6 +15,7 @@ using namespace boost::posix_time;
 class Packet {
 
 public:
+  const static int MAXSIZE = 65536;
   const static unsigned DEFAULTHEADERSIZE = 6;
   const static uint8_t DATA = 0x80;
   const static uint8_t ACK = 0x40;
@@ -36,8 +37,8 @@ public:
   void insert_uint16_t(uint16_t number, void *location);
   bool getField(uint8_t field);
   void setField(uint8_t field, bool value=true);
-  bool getSeqNumber(uint16_t &seqNumber);
-  bool getAckNumber(uint16_t &ackNumber);
+  uint16_t getSeqNumber();
+  uint16_t getAckNumber();
   void setSeqNumber(uint16_t seqNumber, bool shouldSet=true);
   void setAckNumber(uint16_t ackNumber, bool shouldSet=true);
 

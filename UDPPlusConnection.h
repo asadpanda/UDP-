@@ -44,6 +44,7 @@ private:
   uint8_t ackWaiting; 
 	void timer();
 	bool checkIfAckable(const uint16_t &);
+  void processInBuffer();
   UDPPlus *mainHandler;
   State currentState;
   void handleEstablished(Packet *currentPacket);
@@ -64,19 +65,19 @@ private:
   boost::mutex inBufferMutex;
   boost::mutex outBufferMutex;
   boost::mutex timerMutex;
+
+  deque< Packet* > inQueue;
   Packet **inBuffer; // for array of pointers
   Packet **outBuffer;
-
   int inBufferSize; // changed from unsigned
   int outBufferSize;
   uint16_t inBufferBegin;
-  uint16_t inBufferEnd;
   uint16_t outBufferBegin;
-  uint16_t outBufferEnd;
-  uint16_t newAckNum;
-  uint16_t newSeqNum;
   uint16_t inItems;
   uint16_t outItems;
+  
+  uint16_t newAckNum;
+  uint16_t newSeqNum;
   uint8_t numAck;
   uint16_t lastAckRecv;
 
