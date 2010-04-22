@@ -30,7 +30,10 @@ public:
   void handlePacket(Packet *currentPacket);
 	
   const struct sockaddr* getSockAddr(socklen_t &);
+  
+  // send function for client applications
 	void send(void *, size_t, int);
+  
 	void recv(int s, void *buf, size_t len);
 	void closeConnection();
 	
@@ -44,6 +47,9 @@ private:
   UDPPlus *mainHandler;
   State currentState;
   void handleEstablished(Packet *currentPacket);
+  
+  // 
+  void send_packet(Packet*);
   
   // loop through inBuffer and check the sequence numbers
   // if sequence number is less than newSeqNum, delete from buffer
