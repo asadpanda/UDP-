@@ -198,7 +198,7 @@ void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
       numAck++;
       if (numAck >= 3) { // triplicateAck
         numAck = 0;
-          // resend Packets
+        sendAck()
       }
     } else if ( checkIfAckable(tempAck) ) {
         //releaseBufferTill(tempAck);
