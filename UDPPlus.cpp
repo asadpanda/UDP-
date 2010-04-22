@@ -37,13 +37,17 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 UDPPlus::~UDPPlus() {
   // close all open connections
   close_all();
+
+  waitingCondition.notify_all();
+  close(sockfd);
+  listener->join();  
   for (int i = 0; i < max_connections; i++) {
     if (connectionList[i] != NULL) {
       delete connectionList[i];
       connectionList[i] = NULL;
     }
   }
-  listener->
+  // stop listener thread
 	delete connectionList;
 }
 
@@ -88,12 +92,17 @@ void UDPPlus::listen() {
 		memset(&connection, 0, sizeof(connection));
 		connectionLength = sizeof(connection);
 		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
+    if (length == -1) {
+      printf("listener thread: socket closed");
+      break;
+    }
+    boost::mutex::scoped_lock l(waitingMutex);
 		location = isHostConnected(&connection, connectionLength);
 		if (location >= 0) {
 			connectionList[location]->handlePacket(new Packet(buffer, length));
 		}
 		else {
-			//boost::mutex::scoped_lock l(waitingMutex);
+			//
 			if (waiting == true) {
 				Packet *tempPacket = new Packet(buffer, length);
 				if (tempPacket->getField(Packet::SYN)) {

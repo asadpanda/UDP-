@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
       // this will also start the listener thread for receiving data
       conn->conn(&host, sizeof(host));
       
-      delete conn;
+      //  delete conn;
       
       break;
   }  

@@ -76,7 +76,9 @@ UDPPlusConnection::~UDPPlusConnection() {
 }
 
 void UDPPlusConnection::closeConnection() {
-  //close;
+  if (currentState > ESTABLISHED)
+    return; //already closing;
+  
 }
 
 void UDPPlusConnection::timer() {
@@ -164,7 +166,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     case ESTABLISHED:
     {
       if (handleAck(currentPacket)) {
-        handleData(currentPacket)
+        handleData(currentPacket);
       }
       else {
         handleFin(currentPacket);
@@ -193,17 +195,6 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
  //   if (currentPacket->getHeaderLength != currentPacket->getLength);
 }
 
-void UDPPlusConnection::handleEstablished(Packet *currentPacket) {
-
-
-  // if () {
-  // boost::mutex::scoped_lock l(inBufferMutex);
-    
-  // } else { delete currentPacket; }  
-  //}
-
-  // }
-}
 
 bool UDPPlusConnection::handleAck(Packet *currentPacket) {
   if (!currentPacket->getField(Packet::ACK)) {
@@ -299,7 +290,7 @@ void UDPPlusConnection::sendSack() {
   mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);}
 
 bool UDPPlusConnection::handleData(Packet *currentPacket) {
-  if (!currentPacket->getField(Packet::DATA)) {
+  if (!(currentPacket->getField(Packet::DATA) || currentPacket->getField(Packet::FIN))) {
     return false;
   }
   
@@ -356,9 +347,27 @@ int UDPPlusConnection::processInBuffer() {
   while ( !done ) {
     if (inBuffer[currentPosition] != NULL) {
       newAckNum = inBuffer[currentPosition]->getSeqNumber() + 1;
-      count++;
-      inQueue.push_back(inBuffer[currentPosition]);
-      inBuffer[currentPosition] = NULL;
+      if (inBuffer[currentPosition]->getField(Packet::FIN)) {
+        if (outItems == 0) {
+          Packet *temp = new Packet(Packet::FIN, newSeqNum++, newAckNum);
+          outBuffer[outBufferBegin] = temp;
+          outItems++;
+          send_packet(temp);
+          currentState = CLOSE_WAIT;
+          inBuffer[currentPosition] = NULL;
+          delete inBuffer[currentPosition];
+        }
+        done = true;
+      }
+      else if (inBuffer[currentPosition]->getField(Packet::DATA)) {
+        count++;
+        inQueue.push_back(inBuffer[currentPosition]);
+        inBuffer[currentPosition] = NULL;
+      }
+      else {
+        inBuffer[currentPosition] = NULL;
+        delete inBuffer[currentPosition];
+      }
     }
     else {
       done = true;
