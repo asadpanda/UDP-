@@ -11,6 +11,7 @@
 int main(int argc, char* argv[]) {
   
   UDPPlus *conn = new UDPPlus;
+  UDPPlusConnection *open;
   int role = 0;
   const int PORT = 30000;
   
@@ -39,9 +40,7 @@ int main(int argc, char* argv[]) {
       // start waiting for an incoming connection
       // if a new host is detected, listener thread will direct it to accept
       printf("Waiting for client connection...");
-      conn->accept_p();
-            
-      delete conn;
+      open = conn->accept_p();
       
       break;
     
@@ -57,10 +56,8 @@ int main(int argc, char* argv[]) {
       
       // connect to the server @ localhost
       // this will also start the listener thread for receiving data
-      conn->conn(&host, sizeof(host));
-      
-      delete conn;
-      
+      open = conn->conn(&host, sizeof(host));
+            
       break;
   }  
 	
