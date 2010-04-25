@@ -35,6 +35,7 @@ public:
       size_t firstBufferLength = 0, void *secondBuffer = 0, size_t secondBufferLength = 0);
   ~Packet();
 
+  void print();
   void insert_uint16_t(uint16_t number, void *location);
   bool getField(uint8_t field);
   void setField(uint8_t field, bool value=true);

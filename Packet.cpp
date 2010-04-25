@@ -146,3 +146,10 @@ ptime Packet::getTime() {
 char* Packet::getBuffer() {
   return buffer;
 }
+
+void Packet::print() {
+  char buf[2048];
+  cout << "------Sequence#:" << getSeqNumber() << " Acknowledgment#:" << getAckNumber() << "------" << endl;
+  cout << "DATA:" << getField(DATA) << " ACK:" << getField(ACK) << " SYN:" << getField(SYN) << " FIN:" << getField(DATA) << " OPT:" << getField(OPT) << endl;
+  if (getField(DATA)) { getData(buf, sizeof(buf)); cout << buf; }
+}

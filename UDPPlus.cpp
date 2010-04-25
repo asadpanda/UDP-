@@ -27,11 +27,14 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 	
   // create UDP socket to work with IPv4 and IPv6
 	sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if(sockfd == -1) {
+	if(sockfd < 0) {
 		// throw error
 		printf("error creating socket");
 		exit(0);
 	}
+  int arg = fcntl(sockfd, F_GETFL, NULL); 
+  arg |= O_NONBLOCK; 
+  fcntl(sockfd, F_SETFL, arg);
 }
 
 UDPPlus::~UDPPlus() {
@@ -51,17 +54,20 @@ UDPPlus::~UDPPlus() {
 	delete connectionList;
 }
 
-void UDPPlus::bind_p(const struct sockaddr_in *info, const socklen_t &infoLength) {
+void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
 	} else {
 		printf("already bounded");
-		exit(0);
+		exit(1);
 	}
 
-	bind(sockfd, (struct sockaddr *)info, infoLength);
+	if (bind(sockfd, info, infoLength) < 0) {
+    exit(2);
+  }
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
+  cerr << "Main Thread";
 }
 
 void UDPPlus::send_p(struct sockaddr *connection, socklen_t len, Packet* p) {
@@ -89,26 +95,32 @@ void UDPPlus::listen() {
 	char buffer[5000];
 	int location;
 	struct sockaddr connection;
-  fprintf(stderr, "new thread");
+  cerr << "new thread";
 	socklen_t connectionLength;
 	while(true) {
 		memset(&connection, 0, sizeof(connection));
 		connectionLength = sizeof(connection);
+    cerr << "listening for new connection";
 		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
     if (length == -1) {
       waitingCondition.notify_all();
-      printf("listener thread: socket closed");
+      cerr << "listener thread: socket closed";
       break;
     }
+    cerr << "waiting for mutex";
     boost::mutex::scoped_lock l(waitingMutex);
+    cerr << "test";
 		location = isHostConnected(&connection, connectionLength);
 		if (location >= 0) {
-			connectionList[location]->handlePacket(new Packet(buffer, length));
+      Packet *temp = new Packet(buffer, length);
+      temp->print();
+			connectionList[location]->handlePacket(temp);
 		}
 		else {
 			//
 			if (waiting == true) {
 				Packet *tempPacket = new Packet(buffer, length);
+        tempPacket->print();
 				if (tempPacket->getField(Packet::SYN)) {
 					waitingConnection = new UDPPlusConnection(this, &connection, connectionLength, bufferSize, tempPacket);
           waiting = false;
@@ -136,8 +148,7 @@ int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
 }
 																 
 
-UDPPlusConnection* UDPPlus::conn(const struct sockaddr_in *info, const socklen_t &infoLength) {
-  boost::mutex::scoped_lock l(waitingMutex);
+UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &infoLength) {
 	if(!bounded)
 	{
 		bounded = true;
@@ -146,16 +157,20 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr_in *info, const socklen_t
 		exit(0);
 	}
   // connect will bind a socket
-	connect(sockfd, (struct sockaddr *)info, infoLength);
+	if (connect(sockfd, info, infoLength) < 0) {
+    exit(1);
+  }
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
-
+  boost::mutex::scoped_lock l(waitingMutex);
+  cerr << "waiting mutex grabbed";
 	int location = findSlot();
-	if (location == -1) {
-		printf("gone over connections");
-		return NULL;
-	}
+//	if (location == -1) {
+//    cerr << "no location found";
+//		return NULL;
+//	}
   // build connection information
-  UDPPlusConnection *active = new UDPPlusConnection(this, (struct sockaddr *)info, infoLength, bufferSize);
+  cerr << "creating new connection";
+  UDPPlusConnection *active = new UDPPlusConnection(this, info, infoLength, bufferSize);
 	connectionList[location] = active;
 	return active;
 }

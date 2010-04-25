@@ -26,9 +26,11 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/bind.hpp>
+#include <fcntl.h>
 
 #define CONNECTION_CLOSED -1
 

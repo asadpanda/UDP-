@@ -152,6 +152,8 @@ void UDPPlusConnection::send_packet(Packet * temp) {
     outCondition.notify_all();
     return;
   }
+  cout << "sending Packet" << endl;
+  temp->print();
   temp->setAckNumber(newAckNum, temp->getField(Packet::ACK));
   temp->updateTime();
   temp->numAck = 0;
@@ -169,6 +171,8 @@ const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
 
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
   boost::mutex::scoped_lock l(sharedMutex);
+  cout << "Recieved Packet" << endl;
+  currentPacket->print();
   switch(currentState) {
     case LISTEN:
     {
