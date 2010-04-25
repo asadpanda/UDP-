@@ -13,7 +13,7 @@
 
 using namespace boost::posix_time;
 
-enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT1, FIN_WAIT2, CLOSE_WAIT, CLOSING, LAST_ACK, TIME_WAIT, CLOSED };
+enum State { LISTEN, SYN_SENT, SYN_RECIEVED, ESTABLISHED, FIN_WAIT, CLOSE_WAIT, LAST_ACK, TIME_WAIT, CLOSED };
 
 class UDPPlus;
 
@@ -31,9 +31,9 @@ public:
   const struct sockaddr* getSockAddr(socklen_t &);
   
   // send function for client applications
-	void send(void *, size_t, int);
+	int send(void *, size_t);
   
-	void recv(int s, void *buf, size_t len);
+	int recv(void *buf, size_t len);
 	void closeConnection();
 	
 private:
@@ -61,33 +61,29 @@ private:
 	time_duration timeout;
   time_duration maximumTimeout;
   ptime ackTimestamp;
-  uint8_t ackWaiting; 
+  uint8_t ackWaiting; // 
+  uint8_t numAck;
 
   boost::condition_variable timerCondition;
-  boost::condition_variable inConditionEmpty;
-  boost::condition_variable inConditionFull;
-  boost::condition_variable outConditionEmpty;
-  boost::condition_variable outConditionFull;
+  boost::condition_variable inCondition;
+  boost::condition_variable outCondition;
   boost::mutex sharedMutex;
-  boost::mutex ackMutex;
-  boost::mutex inBufferMutex;
-  boost::mutex outBufferMutex;
-  boost::mutex timerMutex;
 
   deque< Packet* > inQueue;
   Packet **inBuffer; // for array of pointers
   Packet **outBuffer;
   int inBufferSize; // changed from unsigned
   int outBufferSize;
-  uint16_t inBufferBegin;
+  uint16_t inBufferBegin; // Current position 
   uint16_t outBufferBegin;
-  uint16_t inItems;
-  uint16_t outItems;
-  int8_t inBufferDelta;
+  //uint16_t inItems;       // Number of items
+  uint16_t outItems;      // Number of Items in the outgoing buffer
+  int8_t inBufferDelta;   // This is used to determine the difference between
+                          // the last acked segment recieved and the highest segment
+                          // recieved that hasn't been acked yet (out of order packets)
   
-  uint16_t newAckNum;
-  uint16_t newSeqNum;
-  uint8_t numAck;
+  uint16_t newAckNum;     // The Remote Sequence number that can be confirmed recieved.
+  uint16_t newSeqNum;     // New Sequence number that will be sent out
   uint16_t lastAckRecv;
   int maxAckNumber;
 

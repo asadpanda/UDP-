@@ -75,6 +75,9 @@ UDPPlusConnection * UDPPlus::accept_p() {
 	if (waitingConnection == NULL)
 		waitingCondition.wait(l);
 	waiting = false;
+  if (waitingConnection == NULL) {
+    return NULL;
+  }
 	UDPPlusConnection *tempConnection = waitingConnection;
   int location = findSlot();
   connectionList[location] = tempConnection;
@@ -93,6 +96,7 @@ void UDPPlus::listen() {
 		connectionLength = sizeof(connection);
 		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
     if (length == -1) {
+      waitingCondition.notify_all();
       printf("listener thread: socket closed");
       break;
     }
@@ -118,6 +122,7 @@ void UDPPlus::listen() {
 }
 		
 int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
+  boost::mutex::scoped_lock l(waitingMutex);
 	for (int i=0; i < max_connections; i++) {
 		if (connectionList[i] != NULL) {
 		  socklen_t tempAddressLength;
@@ -132,6 +137,7 @@ int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
 																 
 
 UDPPlusConnection* UDPPlus::conn(const struct sockaddr_in *info, const socklen_t &infoLength) {
+  boost::mutex::scoped_lock l(waitingMutex);
 	if(!bounded)
 	{
 		bounded = true;
@@ -155,6 +161,7 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr_in *info, const socklen_t
 }
 
 int UDPPlus::findSlot() {
+  boost::mutex::scoped_lock l(waitingMutex);
 	for(int i = 0; i < max_connections; i++) {
 		if(connectionList[i] == NULL)
 			return i;
@@ -162,18 +169,27 @@ int UDPPlus::findSlot() {
 	return -1;
 }	
 
-void UDPPlus::close_one(UDPPlusConnection &conn) {
+void UDPPlus::close_one(UDPPlusConnection *conn) {
+  boost::mutex::scoped_lock l(waitingMutex);
   // close single connection
-	conn.closeConnection();
+	conn->closeConnection();
 }
 
 void UDPPlus::close_all() {
+  boost::mutex::scoped_lock l(waitingMutex);
   // close all connections
 	for(int i=0; i < max_connections; i++) {
 		if(connectionList[i] != NULL) {
-			close_one(*connectionList[i]);
+			close_one(connectionList[i]);
 		}
 	}
 	// close the socket
 	close(sockfd);
+}
+
+void UDPPlus::deleteConnection(UDPPlusConnection *connection) {
+  boost::mutex::scoped_lock l(waitingMutex);
+  for( int i = 0; i < max_connections; i++) {
+    if (connectionList[i] == connection) { connectionList[i] = NULL; }
+  }
 }

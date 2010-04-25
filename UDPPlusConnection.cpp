@@ -16,9 +16,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
 
   srand(time(NULL));
   this->mainHandler = mainHandler;
-  timeout = milliseconds(500);
   ackWaiting = 0;
-  maximumTimeout = milliseconds(180000);
 
   memcpy(&remoteAddress, remote, remoteSize);
   this->remoteAddressLength = remoteSize;
@@ -28,7 +26,6 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   outBufferBegin = 0;
   newAckNum = 0;
   newSeqNum = 0;
-  inItems = 0;
   inBufferDelta = 0;
   outItems = 0;
   numAck = 0;
@@ -73,6 +70,8 @@ UDPPlusConnection::~UDPPlusConnection() {
   }
   delete inBuffer;
   delete outBuffer;
+  
+  mainHandler->deleteConnection(this);
 }
 
 void UDPPlusConnection::closeConnection() {
@@ -82,39 +81,84 @@ void UDPPlusConnection::closeConnection() {
 }
 
 void UDPPlusConnection::timer() {
-  time_duration minimumTimeout = maximumTimeout; // 3 minutes
+  bool done = false;
+  timeout = milliseconds(500);
+  maximumTimeout = milliseconds(180000);
   time_duration tempTimeout;
-  time_duration minTimeout;
-  ptime currentTime(microsec_clock::universal_time());
+  time_duration minTimeout = maximumTimeout; // 3 minutes
+  bool connectionTimeout = false;
+  int connectionTimeoutCount = 0;
+  
+  
   boost::mutex::scoped_lock l(sharedMutex);  // change to timerMutex
-  while(true) {
-    timerCondition.timed_wait(l, minimumTimeout);
-    minimumTimeout = maximumTimeout;
-    if (outBuffer[outBufferBegin] != NULL) {
-      if (outBuffer[outBufferBegin]->getTime() + timeout < currentTime) {
-        send_packet(outBuffer[outBufferBegin]);
+  while(!done) {
+    bool conditionNotified = timerCondition.timed_wait(l, minTimeout);
+    ptime currentTime(microsec_clock::universal_time());
+    minTimeout = maximumTimeout;
+
+    if (currentState == CLOSED) { break; }
+    
+    if (connectionTimeout == true && conditionNotified == false) {
+      connectionTimeoutCount++;
+      if (connectionTimeoutCount >= 2) {
+        currentState = CLOSED;
+        break;
       }
-      tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
-      minTimeout = (minimumTimeout < tempTimeout) ? minimumTimeout : tempTimeout;
     }
-    if (ackWaiting == 1) {
-      if (ackTimestamp + timeout < currentTime) {        
-        Packet temp = Packet(Packet::ACK, lowestValidSeq(), newAckNum);
-        mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
-        
-        ackWaiting = 0;
-      } else {
+    
+    connectionTimeout = true;
+    
+    if (currentState == TIME_WAIT) {
+      connectionTimeout = false;
+      if (conditionNotified = true) { minTimeout = maximumTimeout; }
+      else { currentState = CLOSED; break; }
+    }
+    else if (currentState == LAST_ACK) {
+      currentState = CLOSED;
+      break;
+    }
+    else {
+      if (outBuffer[outBufferBegin] != NULL) {
+        if (outBuffer[outBufferBegin]->getTime() + timeout < currentTime) {
+          send_packet(outBuffer[outBufferBegin]);
+        }
         tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
-        minTimeout = (minimumTimeout < tempTimeout) ? minimumTimeout : tempTimeout;
+        minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
+        connectionTimeout = false;
+        connectionTimeoutCount = 0;
+      }
+      if (ackWaiting == 1) {
+        if (ackTimestamp + timeout < currentTime) {        
+          Packet temp = Packet(Packet::ACK, lowestValidSeq(), newAckNum);
+          mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
+          ackWaiting = 0;
+        } else {
+          tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
+          minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
+          connectionTimeout = false;
+          connectionTimeoutCount = 0;
+        }
       }
     }
   }
 }
 
 void UDPPlusConnection::send_packet(Packet * temp) {
-  temp->setAckNumber(newAckNum);
+  
+  if (temp->sendCount > 10) {
+    currentState = CLOSED;
+    timerCondition.notify_all();
+    inCondition.notify_all();
+    outCondition.notify_all();
+    return;
+  }
+  temp->setAckNumber(newAckNum, temp->getField(Packet::ACK));
   temp->updateTime();
   temp->numAck = 0;
+  temp->sendCount++;
+  if (outItems == 0 && ackWaiting == 0) {
+    timerCondition.notify_one();
+  }
   mainHandler->send_p(&remoteAddress, remoteAddressLength, temp);
 }
 
@@ -124,6 +168,7 @@ const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
 }
 
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
+  boost::mutex::scoped_lock l(sharedMutex);
   switch(currentState) {
     case LISTEN:
     {
@@ -131,12 +176,13 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         newAckNum = currentPacket->getSeqNumber();
         newSeqNum = rand() % Packet::MAXSIZE;
         Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
-        boost::mutex::scoped_lock l(outBufferMutex);
+        send_packet(current);
         outBuffer[(outBufferBegin + outItems) % outBufferSize] = current;
         outItems++;
         //send packet
-        send_packet(current);
         currentState = ESTABLISHED;
+        outCondition.notify_all();
+        timerCondition.notify_one();
       }
       break;
     }
@@ -146,7 +192,6 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         uint16_t ack_num = currentPacket->getAckNumber();
         if (ack_num == newSeqNum) {
           newAckNum = currentPacket->getSeqNumber() + 1;
-          boost::mutex::scoped_lock l(outBufferMutex);
           
           // sendAck();
           uint16_t lowestValidSeq = outBuffer[outBufferBegin]->getSeqNumber();
@@ -158,38 +203,40 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
           outBufferBegin = (outBufferBegin + 1) % outBufferSize;
           outItems--;
           currentState = ESTABLISHED;
+          outCondition.notify_all();
         }
       }
       delete currentPacket;
       break;
     }
     case ESTABLISHED:
-    {
+    case FIN_WAIT: {
       if (handleAck(currentPacket)) {
-        handleData(currentPacket);
+        if ( ! (handleData(currentPacket) || handleFin(currentPacket)) ) {
+          delete currentPacket;
+        }
       }
-      else {
-        handleFin(currentPacket);
-        currentState = CLOSE_WAIT;
-      }
-
       break;
     }
-    case FIN_WAIT1: {
-        // fill holes, no extra packets after in
-        // wait for finack
-    }
-    case FIN_WAIT2: {
-      // wait for finack
-        // fill holes, no extra packets out
-        // finack recieved
-    }
     case CLOSE_WAIT:
-        // holes filled, send fin;
-    case CLOSING:
+      handleAck(currentPacket);
+      delete currentPacket;
+      break;
     case LAST_ACK:
+    {
+      handleAck(currentPacket);
+      if (outItems == 0) {
+        currentState = CLOSED;
+        timerCondition.notify_all();
+      }
+      delete currentPacket;
+      break;
+    }
     case TIME_WAIT:
     case CLOSED:
+      delete currentPacket;
+      break;
+    default: delete currentPacket;
       break;
   }
  //   if (currentPacket->getHeaderLength != currentPacket->getLength);
@@ -305,10 +352,8 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
     index = (index + inBufferBegin) % inBufferSize;
     inBufferDelta = (inBufferDelta > index) ? inBufferDelta : index;
     if (inBuffer[index] != NULL) { delete inBuffer[index]; }
-    else {inItems++;}
     inBuffer[index] = currentPacket;
     int count = processInBuffer();
-    inItems -= count;
     inBufferDelta -=count;
     if (count != 1 || ackWaiting == 1) {
       ackWaiting = 0;
@@ -336,6 +381,8 @@ bool UDPPlusConnection::handleFin(Packet *currentPacket) {
     }
     inBuffer[inBufferBegin + index] = currentPacket;
     maxAckNumber = currentAckNumber;
+    if ( currentState != FIN_WAIT ) { currentState = CLOSE_WAIT; }
+    else { currentState = TIME_WAIT; }
     return true;
   }
   return false;
@@ -362,6 +409,7 @@ int UDPPlusConnection::processInBuffer() {
       else if (inBuffer[currentPosition]->getField(Packet::DATA)) {
         count++;
         inQueue.push_back(inBuffer[currentPosition]);
+        inCondition.notify_one();
         inBuffer[currentPosition] = NULL;
       }
       else {
@@ -377,27 +425,59 @@ int UDPPlusConnection::processInBuffer() {
   return count;
 }
 
-void UDPPlusConnection::send(void *buf, size_t len, int flags) {
+ int UDPPlusConnection::send(void *buf, size_t len) {
   boost::mutex::scoped_lock l(sharedMutex);
-  while (outItems == outBufferSize)
-    outConditionFull.wait(l);
+
+   while (currentState == LISTEN || currentState == SYN_SENT || currentState || SYN_RECIEVED) {
+     outCondition.wait(l);
+   }
+   
+   switch (currentState) {
+     case ESTABLISHED:
+     case CLOSE_WAIT:   break;
+     case FIN_WAIT:
+     case LAST_ACK:
+     case TIME_WAIT:
+     case CLOSED:       return -1;
+     default: break;
+   }
+         
+  if (outItems == outBufferSize)
+    outCondition.wait(l);
+   
+   switch (currentState) {
+     case ESTABLISHED:
+     case CLOSE_WAIT:   break;
+     case FIN_WAIT:
+     case LAST_ACK:
+     case TIME_WAIT:
+     case CLOSED:       return -1;
+     default: break;
+   }
+  
   Packet *currentPacket = new Packet(Packet::DATA | Packet::ACK, newSeqNum++, newAckNum , buf, len);
+  send_packet(currentPacket);
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
-  mainHandler->send_p(&remoteAddress, remoteAddressLength, currentPacket);
-  if (outItems == 0 && ackWaiting == 0) {
-    timerCondition.notify_one();
-  }
   outItems++;
 }
 
-void UDPPlusConnection::recv(int s, void *buf, size_t len) {
+int UDPPlusConnection::recv(void *buf, size_t len) {
   boost::mutex::scoped_lock l(sharedMutex);
-  while (inQueue.empty());
-      inConditionEmpty.wait(l);
-  Packet *currentPacket = inQueue.front();
-  inQueue.pop_front();
-  currentPacket->getData(buf, len);
-  delete currentPacket;
+  if (currentState == CLOSE_WAIT || currentState == LAST_ACK || currentState == TIME_WAIT || currentState == CLOSED)
+    return -1;
+ 
+  if ( inQueue.empty() ) {
+    inCondition.wait(l);
+  }
+  
+  if ( !inQueue.empty() ) {
+    Packet *currentPacket = inQueue.front();
+    inQueue.pop_front();
+    currentPacket->getData(buf, len);
+    delete currentPacket;
+    return 0;
+  }
+  return -1;
 }
 
 void UDPPlusConnection::releaseBufferTill(int newSeqNum) {

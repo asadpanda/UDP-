@@ -27,6 +27,7 @@ public:
   const static int ACKLOCATION = 4;
 
   int numAck;
+  int sendCount;
 
   Packet(const Packet&);
   Packet(void *buffer, size_t length);

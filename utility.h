@@ -30,9 +30,11 @@
 #include <boost/thread/condition.hpp>
 #include <boost/bind.hpp>
 
+#define CONNECTION_CLOSED -1
+
 using namespace std;
 
-enum Error_code { success, fail, exceeds_range,
+enum Error_code { success, error, closed, exceeds_range,
 not_present, duplicate_error, underflow, overflow };
 
 #endif //UTILITY_H

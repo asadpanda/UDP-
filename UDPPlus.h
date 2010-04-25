@@ -45,7 +45,7 @@ public:
 	// close will close a single connection object
 	// close_all will close all open connections
 	// close_all will also close the socket (sockfd)
-  void close_one(UDPPlusConnection&);
+  void close_one(UDPPlusConnection *);
 	void close_all();
 
 
@@ -68,6 +68,7 @@ private:
   // checks if an incoming packet is sent from a known host
   // if returns -1, host was not found and is new
 	int isHostConnected(struct sockaddr *connection, socklen_t length);
+  void deleteConnection(UDPPlusConnection *connection);
 
   // array of all UDPPlusConnections
 	UDPPlusConnection **connectionList;

@@ -16,6 +16,7 @@ Packet::Packet(void *buffer, size_t length) {
 
 Packet::Packet(const Packet &original) {
   numAck = original.numAck;
+  sendCount = original.sendCount;
   buffer = new char[original.length];
   length = original.length;
   memcpy(buffer, original.buffer, length);
@@ -25,6 +26,7 @@ Packet::Packet(const Packet &original) {
 Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer,
     size_t firstBufferLength, void *secondBuffer, size_t secondBufferLength)
 {
+  sendCount = 0;
   numAck = 0;
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
   length = DEFAULTHEADERSIZE + 2 + firstBufferLength + secondBufferLength;
