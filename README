@@ -26,3 +26,9 @@ Both the server and client applications use a maximum internal buffer size that 
 
 HOW TO COMPILE:
 Must link with boost_thread library
+
+TODO:
+review report/slideshow
+get test driver program working (demo)
+comment packet/udpplusconnection classes
+cite boost thread as a dependency
