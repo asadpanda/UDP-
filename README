@@ -32,3 +32,5 @@ review report/slideshow
 get test driver program working (demo)
 comment packet/udpplusconnection classes
 cite boost thread as a dependency
+
+cd ~/Documents/xcode/net/build/Debug
