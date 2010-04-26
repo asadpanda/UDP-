@@ -516,9 +516,9 @@ void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   init = outBuffer[outBufferBegin]->getSeqNumber();
   
   if(init < newSeqNum) {
-    total = (outBufferSize + (int) newSeqNum) - ((int)init);
-  } else {
     total = newSeqNum - (int)init;
+  } else {
+	total = (Packet::MAXSIZE + (int) newSeqNum) - ((int)init);    
   }
   total--;
   int bufferLoc = outBufferBegin;
