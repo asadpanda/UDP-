@@ -197,8 +197,9 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       cout << "in LISTEN" << endl;
       if (currentPacket->getField(Packet::SYN)) {
         newAckNum = currentPacket->getSeqNumber();
-        srand(time(NULL));
-        newSeqNum = rand() % Packet::MAXSIZE;
+        //srand(time(NULL));
+        //newSeqNum = rand() % Packet::MAXSIZE;
+        newSeqNum = 5;
         Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
         send_packet(current);
         outBuffer[(outBufferBegin + outItems) % outBufferSize] = current;
@@ -220,8 +221,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
           newAckNum = currentPacket->getSeqNumber() + 1;
           
           // sendAck();
-          uint16_t lowestValidSeq = outBuffer[outBufferBegin]->getSeqNumber();
-          Packet temp = Packet(Packet::ACK, lowestValidSeq, newAckNum);
+          Packet temp = Packet(Packet::ACK, lowestValidSeq(), newAckNum);
           mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
 
           delete outBuffer[outBufferBegin];
@@ -374,7 +374,7 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
   }
   
   int currentAckNumber = currentPacket->getSeqNumber();
-  uint16_t bottomAck = newAckNum - 1;
+  uint16_t bottomAck = newAckNum;
   
   if (currentAckNumber < bottomAck) {
     currentAckNumber += Packet::MAXSIZE;
@@ -394,7 +394,10 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
       ackWaiting = 1;
     }
   }
-  else { return false; }
+  else {
+    Packet temp = Packet(Packet::ACK, lowestValidSeq(), newAckNum);
+    mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
+    return false; }
   return true;
 }
 
@@ -426,6 +429,7 @@ int UDPPlusConnection::processInBuffer() {
   while ( !done ) {
     if (inBuffer[currentPosition] != NULL) {
       newAckNum = inBuffer[currentPosition]->getSeqNumber() + 1;
+      inBufferBegin = (inBufferBegin + 1) % inBufferSize;
       if (inBuffer[currentPosition]->getField(Packet::FIN)) {
         if (outItems == 0) {
           Packet *temp = new Packet(Packet::FIN, newSeqNum++, newAckNum);
