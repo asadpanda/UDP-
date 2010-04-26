@@ -47,9 +47,9 @@ int main(int argc, char* argv[]) {
       // if a new host is detected, listener thread will direct it to accept
       printf("Waiting for client connection...");
       open = conn->accept_p();
-      myThread = new boost::thread(&sender, open);
+      //myThread = new boost::thread(&sender, open);
       reciever(open);
-      myThread->join();
+      //myThread->join();
       open->closeConnection();
       delete open;
       break;
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 
 void sender(UDPPlusConnection *open) {
   cerr << "sending loop starting" << endl;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 9; i++) {
     stringstream tempStream;
     // while (true) {
     tempStream << "This is line " << i << endl;
