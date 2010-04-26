@@ -82,9 +82,12 @@ int main(int argc, char* argv[]) {
 
 void sender(UDPPlusConnection *open) {
   cerr << "sending loop starting" << endl;
-  while (true) {
-    string temp = "";
-    std::getline(std::cin, temp);
+  for (int i = 0; i < 10; i++) {
+    stringstream tempStream;
+    // while (true) {
+    tempStream << "This is line " << i << endl;
+    string temp = tempStream.str();
+    //std::getline(std::cin, temp);
     cout << "buffer recieved::" << endl;
     if (temp == "-1") { break; }
     if (open->send(temp.c_str(), temp.size()) == -1) {

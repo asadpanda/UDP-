@@ -14,7 +14,6 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
     int &bufferSize,
     Packet *incomingConnection) {
 
-  srand(time(NULL));
   this->mainHandler = mainHandler;
   ackWaiting = 0;
 
@@ -43,6 +42,7 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
   }
 
   if (incomingConnection == NULL) {
+    srand(time(NULL));
     newSeqNum = rand() % Packet::MAXSIZE;
     cout << newSeqNum;
     Packet *current = new Packet(Packet::SYN, newSeqNum++, 0);
@@ -197,6 +197,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       cout << "in LISTEN" << endl;
       if (currentPacket->getField(Packet::SYN)) {
         newAckNum = currentPacket->getSeqNumber();
+        srand(time(NULL));
         newSeqNum = rand() % Packet::MAXSIZE;
         Packet *current = new Packet(Packet::SYN | Packet::ACK, newSeqNum++, newAckNum++);
         send_packet(current);
@@ -273,25 +274,30 @@ bool UDPPlusConnection::handleAck(Packet *currentPacket) {
   if (!currentPacket->getField(Packet::ACK)) {
     return false;
   }
-    int tempAck = currentPacket->getAckNumber();
-    if (tempAck == newSeqNum) {
-      lastAckRecv = tempAck;
-      releaseBufferTill(newSeqNum);
-    }
-    else if (tempAck == lastAckRecv) {
+  if (outItems == 0)
+    return true;
+  
+  int tempAck = currentPacket->getAckNumber();
+  if (tempAck == newSeqNum) {
+    lastAckRecv = tempAck;
+    releaseBufferTill(newSeqNum);
+  }
+  else if (tempAck == lastAckRecv) {
+    cerr << outBuffer[outBufferBegin] << endl;
+    cerr << outItems << endl;
+    outBuffer[outBufferBegin]->numAck++;
+    if (outBuffer[outBufferBegin]->numAck >= 3) { // triplicateAck
       outBuffer[outBufferBegin]->numAck++;
-      if (outBuffer[outBufferBegin]->numAck >= 3) { // triplicateAck
-        outBuffer[outBufferBegin]->numAck++;
-        send_packet(outBuffer[outBufferBegin]);
-      }
-      handleSack(currentPacket);
+      send_packet(outBuffer[outBufferBegin]);
     }
-    else if ( checkIfAckable(tempAck) ) {
-      lastAckRecv = tempAck;
-      numAck = 0;
-      releaseBufferTill(tempAck);
-      handleSack(currentPacket);
-    }
+    handleSack(currentPacket);
+  }
+  else if ( checkIfAckable(tempAck) ) {
+    lastAckRecv = tempAck;
+    numAck = 0;
+    releaseBufferTill(tempAck);
+    handleSack(currentPacket);
+  }
   return true;
 }
 
@@ -486,6 +492,7 @@ int UDPPlusConnection::processInBuffer() {
   send_packet(currentPacket);
   outBuffer[outBufferBegin + outItems % outBufferSize] = currentPacket;
   outItems++;
+  return 0;
 }
 
 int UDPPlusConnection::recv(void *buf, size_t len) {
@@ -516,14 +523,17 @@ void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   init = outBuffer[outBufferBegin]->getSeqNumber();
   
   if(init < newSeqNum) {
-    total = (outBufferSize + (int) newSeqNum) - ((int)init);
-  } else {
     total = newSeqNum - (int)init;
+  } else {
+    total = ((int) Packet::MAXSIZE + (int) newSeqNum) - ((int)init);
   }
   total--;
   int bufferLoc = outBufferBegin;
+  cout << "outItems: " << outItems << endl;
+  cout << "total Items: " << total << endl;
   
   for (int i = 0; i < total; i++) {
+    cout << "Releasing Packet " << outBuffer[bufferLoc] << "from output" << endl;
     delete outBuffer[bufferLoc];
     outItems--;
     outBuffer[bufferLoc] = NULL;

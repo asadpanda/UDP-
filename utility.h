@@ -6,6 +6,7 @@
 //messages
 
 #include <iostream>
+#include <sstream>
 #include <limits>
 #include <cmath>
 #include <cstdlib>
