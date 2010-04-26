@@ -88,6 +88,7 @@ void UDPPlusConnection::closeConnection() {
     cout << "Already Closing" << endl;
     return; //already closing;
 
+  cout << "closing connection" << endl;
   if (currentState == CLOSE_WAIT) {
     currentState = LAST_ACK;
   }

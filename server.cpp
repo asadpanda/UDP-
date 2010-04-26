@@ -51,6 +51,7 @@ int main(int argc, char* argv[]) {
       reciever(open);
       //myThread->join();
       open->closeConnection();
+      conn->close_all();
       delete open;
       break;
     
@@ -67,11 +68,11 @@ int main(int argc, char* argv[]) {
       // this will also start the listener thread for receiving data
       open = conn->conn( (struct sockaddr *) &host, sizeof(host));
       
-      myThread = new boost::thread(&sender, open);
-      reciever(open);
+      //  myThread = new boost::thread(&sender, open);
+      sender(open);
       
       cout << "Sending Finished: Joining Recieving thread" << endl;
-      myThread->join();
+      //myThread->join();
       open->closeConnection();
       delete open;
       break;
