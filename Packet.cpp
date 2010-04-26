@@ -8,7 +8,7 @@
 #include "Packet.h"
 #include "utility.h"
 
-Packet::Packet(void *buffer, size_t length) {
+Packet::Packet(const void *buffer, size_t length) {
   this->length = length;
   this->buffer = new char[length];
   memcpy(this->buffer, buffer, length);
@@ -23,16 +23,17 @@ Packet::Packet(const Packet &original) {
 }
 
 
-Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer,
-    size_t firstBufferLength, void *secondBuffer, size_t secondBufferLength)
+Packet::Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, const void *firstBuffer,
+    size_t firstBufferLength, const void *secondBuffer, size_t secondBufferLength)
 {
   sendCount = 0;
   numAck = 0;
   buffer = new char[DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength];
-  length = DEFAULTHEADERSIZE + 2 + firstBufferLength + secondBufferLength;
+  length = DEFAULTHEADERSIZE + firstBufferLength + secondBufferLength;
 
   clear();
   setField(field);
+  setSeqNumber(seqNumber);
   setAckNumber(ackNumber, getField(ACK));
   if ( getField(OPT) ) {
     setHeaderLength(DEFAULTHEADERSIZE + firstBufferLength);
@@ -149,7 +150,7 @@ char* Packet::getBuffer() {
 
 void Packet::print() {
   char buf[2048];
-  cout << "------Sequence#:" << getSeqNumber() << " Acknowledgment#:" << getAckNumber() << "------" << endl;
-  cout << "DATA:" << getField(DATA) << " ACK:" << getField(ACK) << " SYN:" << getField(SYN) << " FIN:" << getField(DATA) << " OPT:" << getField(OPT) << endl;
+  cout << "-----Sequence#:" << getSeqNumber() << " Acknowledgment#:" << getAckNumber() << "------" << endl;
+  cout << "\t\tDATA:" << getField(DATA) << " ACK:" << getField(ACK) << " SYN:" << getField(SYN) << " FIN:" << getField(DATA) << " OPT:" << getField(OPT) << endl;
   if (getField(DATA)) { getData(buf, sizeof(buf)); cout << buf; }
 }

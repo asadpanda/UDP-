@@ -44,20 +44,28 @@ UDPPlusConnection::UDPPlusConnection(UDPPlus *mainHandler,
 
   if (incomingConnection == NULL) {
     newSeqNum = rand() % Packet::MAXSIZE;
+    cout << newSeqNum;
     Packet *current = new Packet(Packet::SYN, newSeqNum++, 0);
+    current->print();
     outBuffer[(outBufferBegin + outItems) % outBufferSize] = current;
+    outItems++;
+    send_packet(current);
     currentState = SYN_SENT;
-   // send(outBufferEnd);
   }
   else {
+    incomingConnection->print();
     handlePacket(incomingConnection);
   }
 
   clock = new boost::thread(boost::bind(&UDPPlusConnection::timer, this));
+  timerCondition.notify_one();
+  
 }
 
 UDPPlusConnection::~UDPPlusConnection() {
   closeConnection();
+  clock->join();  //wait for clock to be destroyed.
+  cout << "Destroying Connection";
   for (int i = 0; i < inBufferSize; i++) {
     if ( inBuffer[i] != NULL) {
       delete inBuffer[i];
@@ -75,9 +83,21 @@ UDPPlusConnection::~UDPPlusConnection() {
 }
 
 void UDPPlusConnection::closeConnection() {
-  if (currentState > ESTABLISHED)
+  boost::mutex::scoped_lock l(sharedMutex);
+  if (currentState == FIN_WAIT || currentState == LAST_ACK || currentState == CLOSED || currentState == TIME_WAIT)
+    cout << "Already Closing" << endl;
     return; //already closing;
-  
+
+  if (currentState == CLOSE_WAIT) {
+    currentState = LAST_ACK;
+  }
+  else {
+    currentState = FIN_WAIT;
+  }
+  Packet *temp = new Packet(Packet::FIN, newSeqNum++, newAckNum);
+  outBuffer[outBufferBegin] = temp;
+  outItems++;
+  send_packet(temp);  
 }
 
 void UDPPlusConnection::timer() {
@@ -152,8 +172,7 @@ void UDPPlusConnection::send_packet(Packet * temp) {
     outCondition.notify_all();
     return;
   }
-  cout << "sending Packet" << endl;
-  temp->print();
+  cout << "Sending Data Packet" << endl;
   temp->setAckNumber(newAckNum, temp->getField(Packet::ACK));
   temp->updateTime();
   temp->numAck = 0;
@@ -172,10 +191,10 @@ const struct sockaddr* UDPPlusConnection::getSockAddr(socklen_t &addrLength) {
 void UDPPlusConnection::handlePacket(Packet *currentPacket) {
   boost::mutex::scoped_lock l(sharedMutex);
   cout << "Recieved Packet" << endl;
-  currentPacket->print();
   switch(currentState) {
     case LISTEN:
     {
+      cout << "in LISTEN" << endl;
       if (currentPacket->getField(Packet::SYN)) {
         newAckNum = currentPacket->getSeqNumber();
         newSeqNum = rand() % Packet::MAXSIZE;
@@ -185,6 +204,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
         outItems++;
         //send packet
         currentState = ESTABLISHED;
+        cout << "connection established" << endl;
         outCondition.notify_all();
         timerCondition.notify_one();
       }
@@ -192,6 +212,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
     }
     case SYN_SENT:
     {
+      cout << "SYN_SENT" << endl;
       if (currentPacket->getField(Packet::SYN | Packet::ACK)) {
         uint16_t ack_num = currentPacket->getAckNumber();
         if (ack_num == newSeqNum) {
@@ -206,6 +227,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
           outBuffer[outBufferBegin] = NULL;
           outBufferBegin = (outBufferBegin + 1) % outBufferSize;
           outItems--;
+          cout << "connection established";
           currentState = ESTABLISHED;
           outCondition.notify_all();
         }
@@ -213,7 +235,7 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       delete currentPacket;
       break;
     }
-    case ESTABLISHED:
+    case ESTABLISHED: cout << "IN ESTABLISHED" << endl;
     case FIN_WAIT: {
       if (handleAck(currentPacket)) {
         if ( ! (handleData(currentPacket) || handleFin(currentPacket)) ) {
@@ -292,7 +314,7 @@ bool UDPPlusConnection::handleSack(Packet *currentPacket) {
     {
       if (counter >= maxLength) { return true; }
       if (outBuffer[index] == NULL) { return false; }
-      if ( sackRanges[i] & current != current )
+      if ( (sackRanges[i] & current) != current )
       {
         if (outBuffer[index]->numAck == 3)
           send_packet(outBuffer[index]);
@@ -429,10 +451,11 @@ int UDPPlusConnection::processInBuffer() {
   return count;
 }
 
- int UDPPlusConnection::send(void *buf, size_t len) {
-  boost::mutex::scoped_lock l(sharedMutex);
+ int UDPPlusConnection::send(const void *buf, size_t len) {
+   cout << "Sending Data" << endl;
+   boost::mutex::scoped_lock l(sharedMutex);
 
-   while (currentState == LISTEN || currentState == SYN_SENT || currentState || SYN_RECIEVED) {
+   while (currentState == LISTEN || currentState == SYN_SENT || currentState == SYN_RECIEVED) {
      outCondition.wait(l);
    }
    
@@ -487,6 +510,9 @@ int UDPPlusConnection::recv(void *buf, size_t len) {
 void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   uint16_t init = 0;
   int total = 0;
+  if (outBuffer[outBufferBegin] == NULL)
+    return;
+  
   init = outBuffer[outBufferBegin]->getSeqNumber();
   
   if(init < newSeqNum) {

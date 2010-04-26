@@ -26,15 +26,12 @@ UDPPlus::UDPPlus(int max_conn, int buf) {
 		connectionList[i] = NULL;
 	
   // create UDP socket to work with IPv4 and IPv6
-	sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(sockfd < 0) {
 		// throw error
 		printf("error creating socket");
 		exit(0);
 	}
-  int arg = fcntl(sockfd, F_GETFL, NULL); 
-  arg |= O_NONBLOCK; 
-  fcntl(sockfd, F_SETFL, arg);
 }
 
 UDPPlus::~UDPPlus() {
@@ -66,12 +63,20 @@ void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 	if (bind(sockfd, info, infoLength) < 0) {
     exit(2);
   }
+  mode = LISTENING;
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
-  cerr << "Main Thread";
 }
 
 void UDPPlus::send_p(struct sockaddr *connection, socklen_t len, Packet* p) {
-  sendto(sockfd, p->getBuffer(), p->getLength(), 0, connection, len);
+  
+  cout << "->";
+  p->print();
+  int errorNumber = sendto(sockfd, p->getBuffer(), p->getLength(), 0, connection, len);
+  if ( errorNumber == -1 ) {
+    cout << errno;
+    cout << EISCONN;
+    exit(0);
+  }
 }
 
 
@@ -85,8 +90,6 @@ UDPPlusConnection * UDPPlus::accept_p() {
     return NULL;
   }
 	UDPPlusConnection *tempConnection = waitingConnection;
-  int location = findSlot();
-  connectionList[location] = tempConnection;
 	waitingConnection = NULL;
 	return tempConnection;
 }
@@ -94,35 +97,56 @@ UDPPlusConnection * UDPPlus::accept_p() {
 void UDPPlus::listen() {
 	char buffer[5000];
 	int location;
+  Mode tempMode = mode;
 	struct sockaddr connection;
-  cerr << "new thread";
+  cerr << "listening thread created";
 	socklen_t connectionLength;
 	while(true) {
 		memset(&connection, 0, sizeof(connection));
 		connectionLength = sizeof(connection);
-    cerr << "listening for new connection";
-		int length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
+    cerr << "listening for new connection\n";
+    int length;
+    if (tempMode == CONNECTED)
+    {
+      length = recv(sockfd, buffer, sizeof(buffer), 0);
+    }
+    else {
+      length = recvfrom(sockfd, buffer, sizeof(buffer), 0, &connection, &connectionLength);
+    }
     if (length == -1) {
       waitingCondition.notify_all();
+      cout << errno;
       cerr << "listener thread: socket closed";
       break;
     }
-    cerr << "waiting for mutex";
+    cerr << "waiting for mutex\n";
     boost::mutex::scoped_lock l(waitingMutex);
-    cerr << "test";
 		location = isHostConnected(&connection, connectionLength);
 		if (location >= 0) {
       Packet *temp = new Packet(buffer, length);
+      cout << "<-";
       temp->print();
 			connectionList[location]->handlePacket(temp);
 		}
 		else {
-			//
+			cout << "host not connected\n" << endl;
 			if (waiting == true) {
 				Packet *tempPacket = new Packet(buffer, length);
+        cout << "<-";
         tempPacket->print();
 				if (tempPacket->getField(Packet::SYN)) {
-					waitingConnection = new UDPPlusConnection(this, &connection, connectionLength, bufferSize, tempPacket);
+          int location = findSlot();
+          if (location == -1) {
+            cerr << "no location found" << endl;
+            delete tempPacket;
+            waitingConnection = NULL;
+            waiting = false;
+            waitingCondition.notify_one();
+          }
+          // build connection information
+          cerr << "PACKET RECIEVED: Creating New Connection";
+          waitingConnection = new UDPPlusConnection(this, &connection, connectionLength, bufferSize, tempPacket);
+          connectionList[location] = waitingConnection;
           waiting = false;
 					waitingCondition.notify_one();
 				} else {
@@ -134,13 +158,17 @@ void UDPPlus::listen() {
 }
 		
 int UDPPlus::isHostConnected(struct sockaddr *connection, socklen_t length) {
-  boost::mutex::scoped_lock l(waitingMutex);
+  const sockaddr_in* temp = (sockaddr_in *) connection;
+  
 	for (int i=0; i < max_connections; i++) {
 		if (connectionList[i] != NULL) {
 		  socklen_t tempAddressLength;
-		  const struct sockaddr *tempAddress = connectionList[i]->getSockAddr(tempAddressLength);
-			if (tempAddressLength == length && memcmp(connection, tempAddress, length) == 0) {
-				return i;
+		  const struct sockaddr_in *tempAddress = (const struct sockaddr_in *) connectionList[i]->getSockAddr(tempAddressLength);
+      if ( (temp->sin_port == tempAddress->sin_port) &&
+           (temp->sin_addr.s_addr == tempAddress->sin_addr.s_addr) &&
+           (temp->sin_family == tempAddress->sin_family) )
+      {
+ 				return i;
 			}
 		}
 	}
@@ -157,17 +185,18 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &i
 		exit(0);
 	}
   // connect will bind a socket
-	if (connect(sockfd, info, infoLength) < 0) {
-    exit(1);
-  }
+	//if (connect(sockfd, info, infoLength) < 0) {
+  //  exit(1);
+  //}
+  mode = LISTENING;
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
   boost::mutex::scoped_lock l(waitingMutex);
   cerr << "waiting mutex grabbed";
 	int location = findSlot();
-//	if (location == -1) {
-//    cerr << "no location found";
-//		return NULL;
-//	}
+	if (location == -1) {
+		cerr << "no location found" ;
+		return NULL;
+	}
   // build connection information
   cerr << "creating new connection";
   UDPPlusConnection *active = new UDPPlusConnection(this, info, infoLength, bufferSize);
@@ -176,7 +205,6 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &i
 }
 
 int UDPPlus::findSlot() {
-  boost::mutex::scoped_lock l(waitingMutex);
 	for(int i = 0; i < max_connections; i++) {
 		if(connectionList[i] == NULL)
 			return i;
@@ -185,17 +213,16 @@ int UDPPlus::findSlot() {
 }	
 
 void UDPPlus::close_one(UDPPlusConnection *conn) {
-  boost::mutex::scoped_lock l(waitingMutex);
   // close single connection
 	conn->closeConnection();
 }
 
 void UDPPlus::close_all() {
-  boost::mutex::scoped_lock l(waitingMutex);
   // close all connections
 	for(int i=0; i < max_connections; i++) {
 		if(connectionList[i] != NULL) {
 			close_one(connectionList[i]);
+      connectionList[i] = NULL;
 		}
 	}
 	// close the socket

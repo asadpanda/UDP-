@@ -30,9 +30,9 @@ public:
   int sendCount;
 
   Packet(const Packet&);
-  Packet(void *buffer, size_t length);
-  Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, void *firstBuffer = 0,
-      size_t firstBufferLength = 0, void *secondBuffer = 0, size_t secondBufferLength = 0);
+  Packet(const void *buffer, size_t length);
+  Packet(uint8_t field, uint16_t seqNumber, uint16_t ackNumber, const void *firstBuffer = 0,
+      size_t firstBufferLength = 0, const void *secondBuffer = 0, size_t secondBufferLength = 0);
   ~Packet();
 
   void print();

@@ -31,7 +31,7 @@ public:
   const struct sockaddr* getSockAddr(socklen_t &);
   
   // send function for client applications
-	int send(void *, size_t);
+	int send(const void *, size_t);
   
 	int recv(void *buf, size_t len);
 	void closeConnection();

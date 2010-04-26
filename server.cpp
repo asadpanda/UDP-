@@ -9,6 +9,7 @@
 #include "UDPPlus.h"
 #include "UDPPlusConnection.h"
 
+void sender(UDPPlusConnection *open);
 void reciever(UDPPlusConnection *conn);
 
 int main(int argc, char* argv[]) {
@@ -17,7 +18,6 @@ int main(int argc, char* argv[]) {
   UDPPlusConnection *open;
   int role = 0;
   const int PORT = 9555;
-  char buf[2048];
   boost::thread *myThread;
 
   
@@ -47,16 +47,10 @@ int main(int argc, char* argv[]) {
       // if a new host is detected, listener thread will direct it to accept
       printf("Waiting for client connection...");
       open = conn->accept_p();
-      myThread = new boost::thread(&reciever, open);
-      while (true) {
-        fgets(buf, sizeof(buf), stdin);
-        if (open->send(buf, strlen(buf)) == -1) {
-          myThread->join();
-          break;
-        }
-      }
-      
-      
+      myThread = new boost::thread(&sender, open);
+      reciever(open);
+      myThread->join();
+      open->closeConnection();
       delete open;
       break;
     
@@ -73,15 +67,12 @@ int main(int argc, char* argv[]) {
       // this will also start the listener thread for receiving data
       open = conn->conn( (struct sockaddr *) &host, sizeof(host));
       
-      myThread = new boost::thread(&reciever, open);
-      while (true) {
-        fgets(buf, sizeof(buf), stdin);
-        if (open->send(buf, strlen(buf)) == -1) {
-          myThread->join();
-          break;
-        }
-      }
+      myThread = new boost::thread(&sender, open);
+      reciever(open);
       
+      cout << "Sending Finished: Joining Recieving thread" << endl;
+      myThread->join();
+      open->closeConnection();
       delete open;
       break;
   }  
@@ -89,14 +80,28 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
+void sender(UDPPlusConnection *open) {
+  cerr << "sending loop starting" << endl;
+  while (true) {
+    string temp = "";
+    std::getline(std::cin, temp);
+    cout << "buffer recieved::" << endl;
+    if (temp == "-1") { break; }
+    if (open->send(temp.c_str(), temp.size()) == -1) {
+      break;
+    }
+  }
+}
+
 void reciever(UDPPlusConnection *conn) {
   char buf[2048];
   
+  cout << "Reciever Thread Started" << endl;
   while (true) {
     if ( conn->recv(buf, sizeof(buf)) > 0 ) {
       printf("connection closed");
       break;
     }
-    printf("%s", buf);
+    cout << buf;
   }
 }

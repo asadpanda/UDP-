@@ -17,6 +17,8 @@ class UDPPlusConnection;
 // the UDP+ transport layer protocol. The UDP+ class encapsulates
 // core UDP c++ methods and adds in additional features.
 
+enum Mode { LISTENING, CONNECTED };
+
 class UDPPlus {
 public:
   
@@ -72,8 +74,9 @@ private:
 
   // array of all UDPPlusConnections
 	UDPPlusConnection **connectionList;
+  
+  Mode mode;
 	int sockfd;
-  fd_set sockset;
 	int max_connections;
 	int bufferSize;
 	boost::thread *listener;
