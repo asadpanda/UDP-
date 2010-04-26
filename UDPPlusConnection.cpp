@@ -527,7 +527,6 @@ void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   } else {
     total = ((int) Packet::MAXSIZE + (int) newSeqNum) - ((int)init);
   }
-  total--;
   int bufferLoc = outBufferBegin;
   cout << "outItems: " << outItems << endl;
   cout << "total Items: " << total << endl;

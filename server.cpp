@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 
 void sender(UDPPlusConnection *open) {
   cerr << "sending loop starting" << endl;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 1; i++) {
     stringstream tempStream;
     // while (true) {
     tempStream << "This is line " << i << endl;
