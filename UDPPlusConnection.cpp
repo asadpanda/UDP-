@@ -83,6 +83,7 @@ UDPPlusConnection::~UDPPlusConnection() {
 }
 
 void UDPPlusConnection::closeConnection() {
+  cout << "closing connection---------------------------------------------------------------------------------------";
   boost::mutex::scoped_lock l(sharedMutex);
   if (currentState == FIN_WAIT || currentState == LAST_ACK || currentState == CLOSED || currentState == TIME_WAIT)
     cout << "Already Closing" << endl;
