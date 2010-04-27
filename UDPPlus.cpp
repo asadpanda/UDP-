@@ -104,7 +104,7 @@ void UDPPlus::listen() {
 	while(true) {
 		memset(&connection, 0, sizeof(connection));
 		connectionLength = sizeof(connection);
-    cerr << "listening for new connection\n";
+    cerr << "listening for packet\n";
     int length;
     if (tempMode == CONNECTED)
     {
