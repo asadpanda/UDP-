@@ -27,9 +27,21 @@ Both the server and client applications use a maximum internal buffer size that 
 HOW TO COMPILE:
 Must link with boost_thread library
 
-TODO:
-review report/slideshow
-get test driver program working (demo)
-comment packet/udpplusconnection classes
-
 cd ~/Documents/xcode/net/build/Debug
+
+                                          +-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+
+                                          |     UDPPlus   | -> spawns | listener thread |
+                                          +-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+ 
+                            
+                                                  |
+                                                  | has many UDPPlusConnections
+                                                  |
+           ------------------------------------------------------------------------
+           |                                                                      |
+    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+               +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+
+    | UDPPlusConnection | -> spawns |    timer thread   |               | UDPPlusConnection | -> spawns |    timer thread   |
+    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+               +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+
+           
+From an applications perspective, you would create a UDPPlus object first. Then use that object to create as many connections as you would like. The UDPPlus object has a single thread that listens to all incoming data and determines what to do with that data. Each UDPPlusConnection objects have a timer thread that can detect a timeout.
+           
+           
