@@ -69,8 +69,8 @@ void UDPPlus::bind_p(const struct sockaddr *info, const socklen_t &infoLength) {
 
 void UDPPlus::send_p(struct sockaddr *connection, socklen_t len, Packet* p) {
   
-  cout << "->";
-  p->print();
+  //cout << "->";
+  //p->print();
   int errorNumber = sendto(sockfd, p->getBuffer(), p->getLength(), 0, connection, len);
   if ( errorNumber == -1 ) {
     cout << errno;
@@ -99,12 +99,12 @@ void UDPPlus::listen() {
 	int location;
   Mode tempMode = mode;
 	struct sockaddr connection;
-  cerr << "listening thread created";
+  //cerr << "listening thread created";
 	socklen_t connectionLength;
 	while(true) {
 		memset(&connection, 0, sizeof(connection));
 		connectionLength = sizeof(connection);
-    cerr << "listening for packet\n";
+    //cerr << "listening for packet\n";
     int length;
     if (tempMode == CONNECTED)
     {
@@ -115,16 +115,16 @@ void UDPPlus::listen() {
     }
     if (length == -1) {
       waitingCondition.notify_all();
-      cout << errno;
-      cerr << "listener thread: socket closed";
+      //cout << errno;
+      //cerr << "listener thread: socket closed";
       break;
     }
-    cerr << "waiting for mutex\n";
+    //cerr << "waiting for mutex\n";
     boost::mutex::scoped_lock l(waitingMutex);
 		location = isHostConnected(&connection, connectionLength);
 		if (location >= 0) {
       Packet *temp = new Packet(buffer, length);
-      cout << "<-";
+      //cout << "<-";
       temp->print();
 			connectionList[location]->handlePacket(temp);
 		}
@@ -132,19 +132,19 @@ void UDPPlus::listen() {
 			cout << "host not connected\n" << endl;
 			if (waiting == true) {
 				Packet *tempPacket = new Packet(buffer, length);
-        cout << "<-";
+        //cout << "<-";
         tempPacket->print();
 				if (tempPacket->getField(Packet::SYN)) {
           int location = findSlot();
           if (location == -1) {
-            cerr << "no location found" << endl;
+            //cerr << "no location found" << endl;
             delete tempPacket;
             waitingConnection = NULL;
             waiting = false;
             waitingCondition.notify_one();
           }
           // build connection information
-          cerr << "PACKET RECIEVED: Creating New Connection";
+          //cerr << "PACKET RECIEVED: Creating New Connection";
           waitingConnection = new UDPPlusConnection(this, &connection, connectionLength, bufferSize, tempPacket);
           connectionList[location] = waitingConnection;
           waiting = false;
@@ -191,14 +191,14 @@ UDPPlusConnection* UDPPlus::conn(const struct sockaddr *info, const socklen_t &i
   mode = LISTENING;
   listener = new boost::thread(boost::bind(&UDPPlus::listen, this));
   boost::mutex::scoped_lock l(waitingMutex);
-  cerr << "waiting mutex grabbed";
+  //cerr << "waiting mutex grabbed";
 	int location = findSlot();
 	if (location == -1) {
-		cerr << "no location found" ;
+		//cerr << "no location found" ;
 		return NULL;
 	}
   // build connection information
-  cerr << "creating new connection";
+  //cerr << "creating new connection";
   UDPPlusConnection *active = new UDPPlusConnection(this, info, infoLength, bufferSize);
 	connectionList[location] = active;
 	return active;

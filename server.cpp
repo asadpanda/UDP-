@@ -40,12 +40,12 @@ int main(int argc, char* argv[]) {
       
       // bind the port
       // this also starts the listener thread
-      printf("Binding to port...");
+      //printf("Binding to port...");
       conn->bind_p( (struct sockaddr *) &local, sizeof(local));
       
       // start waiting for an incoming connection
       // if a new host is detected, listener thread will direct it to accept
-      printf("Waiting for client connection...");
+      //printf("Waiting for client connection...");
       open = conn->accept_p();
       //myThread = new boost::thread(&sender, open);
       reciever(open);
@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 }
 
 void sender(UDPPlusConnection *open) {
-  cerr << "sending loop starting" << endl;
+  //cerr << "sending loop starting" << endl;
   for (int i = 0; i < 9; i++) {
     stringstream tempStream;
     // while (true) {
@@ -99,14 +99,14 @@ void sender(UDPPlusConnection *open) {
 void reciever(UDPPlusConnection *conn) {
   char buf[2048];
   
-  cout << "Reciever Thread Started" << endl;
+  //cout << "Reciever Thread Started" << endl;
   while (true) {
     int value = conn->recv(buf, sizeof(buf));
-    cerr << "Reciever Return Value:" << value << endl;
+    //cerr << "Reciever Return Value:" << value << endl;
     if ( value == -1 ) {
       printf("connection closed");
       return;
     }
-    cout << buf;
+    cout << buf << endl;
   }
 }

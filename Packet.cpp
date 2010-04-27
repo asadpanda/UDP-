@@ -150,7 +150,7 @@ char* Packet::getBuffer() {
 
 void Packet::print() {
   char buf[2048];
-  cout << "-----Sequence#:" << getSeqNumber() << " Acknowledgment#:" << getAckNumber() << "------" << endl;
-  cout << "\t\tDATA:" << getField(DATA) << " ACK:" << getField(ACK) << " SYN:" << getField(SYN) << " FIN:" << getField(FIN) << " OPT:" << getField(OPT) << endl;
-  if (getField(DATA)) { getData(buf, sizeof(buf)); cout << buf; }
+  //cout << "-----Sequence#:" << getSeqNumber() << " Acknowledgment#:" << getAckNumber() << "------" << endl;
+  //cout << "\t\tDATA:" << getField(DATA) << " ACK:" << getField(ACK) << " SYN:" << getField(SYN) << " FIN:" << getField(FIN) << " OPT:" << getField(OPT) << endl;
+  if (getField(DATA)) { getData(buf, sizeof(buf)); buf; }
 }
