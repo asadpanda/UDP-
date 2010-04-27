@@ -38,9 +38,9 @@ cd ~/Documents/xcode/net/build/Debug
                                                   |
            ------------------------------------------------------------------------
            |                                                                      |
-    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+               +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+
-    | UDPPlusConnection | -> spawns |    timer thread   |               | UDPPlusConnection | -> spawns |    timer thread   |
-    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+               +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-+-+-+
+    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-                    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-
+    | UDPPlusConnection | -> spawns | timer thread |                    | UDPPlusConnection | -> spawns | timer thread |
+    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-                    +-+-+-+-+-+-+-+-+-+-+           +-+-+-+-+-+-+-+-
            
 From an applications perspective, you would create a UDPPlus object first. Then use that object to create as many connections as you would like. The UDPPlus object has a single thread that listens to all incoming data and determines what to do with that data. Each UDPPlusConnection objects have a timer thread that can detect a timeout.
            
