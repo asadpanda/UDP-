@@ -107,7 +107,7 @@ void UDPPlusConnection::closeConnection() {
 
 void UDPPlusConnection::timer() {
   bool done = false;
-  timeout = milliseconds(500);
+  timeout = milliseconds(1000);
   maximumTimeout = milliseconds(180000);
   time_duration tempTimeout;
   time_duration minTimeout = maximumTimeout; // 3 minutes
@@ -248,19 +248,17 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       break;
     }
     case ESTABLISHED: cout << "IN ESTABLISHED" << endl;
-    case FIN_WAIT: {
+    case FIN_WAIT: cout << "IN FIN_WAIT" << endl;
+    case CLOSE_WAIT: cout << "IN CLOSE_WAIT" << endl;
+    {
       if (handleAck(currentPacket)) {
         if ( ! (handleData(currentPacket) || handleFin(currentPacket)) ) {
           delete currentPacket;
         }
       }
       break;
-    }
-    case CLOSE_WAIT:
-      handleAck(currentPacket);
-      delete currentPacket;
-      break;
-    case LAST_ACK:
+      }
+    case LAST_ACK: cout << "IN LAST_ACK" << endl;
     {
       handleAck(currentPacket);
       if (outItems == 0) {
@@ -270,11 +268,11 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       delete currentPacket;
       break;
     }
-    case TIME_WAIT:
+    case TIME_WAIT: cout << "IN TIME_WAIT" << endl;
       handleAck(currentPacket);
       delete currentPacket;
       break;
-    case CLOSED:
+    case CLOSED: cout << "IN CLOSED" << endl;
       delete currentPacket;
       break;
     default: delete currentPacket;
@@ -393,6 +391,15 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
   if (currentAckNumber < bottomAck) {
     currentAckNumber += Packet::MAXSIZE;
   }
+  if (currentState == CLOSE_WAIT || currentState == FIN_WAIT) {
+    int tempMaxAckNumber = maxAckNumber;
+    if (currentAckNumber > maxAckNumber) { tempMaxAckNumber = maxAckNumber; }
+    
+    if ((maxAckNumber - currentAckNumber) > inBufferDelta) {
+      return false;
+    }
+  }
+      
   int index = currentAckNumber - bottomAck;
   if (index < inBufferSize) {
     index = (index + inBufferBegin) % inBufferSize;
@@ -419,6 +426,11 @@ bool UDPPlusConnection::handleFin(Packet *currentPacket) {
   if (!currentPacket->getField(Packet::FIN) || currentPacket->getField(Packet::DATA)) {
     return false;
   }
+  
+  if (!( (currentState == ESTABLISHED) || (currentState == FIN_WAIT)) ) {
+    return false;
+  }
+  
   int currentAckNumber = currentPacket->getSeqNumber();
   if (currentAckNumber < newAckNum) {
     currentAckNumber += Packet::MAXSIZE;
