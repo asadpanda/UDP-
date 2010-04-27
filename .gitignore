@@ -5,3 +5,4 @@ Debug
 server.cpp.out
 build
 UDP+.xcodeproj
+.DS_Store
