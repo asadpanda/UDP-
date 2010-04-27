@@ -85,20 +85,25 @@ UDPPlusConnection::~UDPPlusConnection() {
 void UDPPlusConnection::closeConnection() {
   cout << "closing connection---------------------------------------------------------------------------------------";
   boost::mutex::scoped_lock l(sharedMutex);
-  if (currentState == FIN_WAIT || currentState == LAST_ACK || currentState == CLOSED || currentState == TIME_WAIT)
+  if (currentState == FIN_WAIT || currentState == LAST_ACK || currentState == CLOSED || currentState == TIME_WAIT) {
     cout << "Already Closing" << endl;
     return; //already closing;
-
+  }
+  
+  cout << "Trying to caputure close lock" << endl;
+  cerr << "closing connection" << endl;
   if (currentState == CLOSE_WAIT) {
     currentState = LAST_ACK;
   }
   else {
     currentState = FIN_WAIT;
   }
+  
   Packet *temp = new Packet(Packet::FIN, newSeqNum++, newAckNum);
-  outBuffer[outBufferBegin] = temp;
+  outBuffer[(outBufferBegin + outItems) % outBufferSize] = temp;
   outItems++;
-  send_packet(temp);  
+  send_packet(temp);
+  //closeCondition.wait(l);
 }
 
 void UDPPlusConnection::timer() {
@@ -132,9 +137,10 @@ void UDPPlusConnection::timer() {
     if (currentState == TIME_WAIT) {
       connectionTimeout = false;
       if (conditionNotified = true) { minTimeout = maximumTimeout; }
-      else { currentState = CLOSED; break; }
+      else { currentState = CLOSED; closeCondition.notify_all(); break; }
     }
     else if (currentState == LAST_ACK) {
+      closeCondition.notify_all();
       currentState = CLOSED;
       break;
     }
@@ -154,7 +160,7 @@ void UDPPlusConnection::timer() {
           mainHandler->send_p(&remoteAddress, remoteAddressLength, &temp);
           ackWaiting = 0;
         } else {
-          tempTimeout = outBuffer[outBufferBegin]->getTime() + timeout - currentTime;
+          tempTimeout = ackTimestamp + timeout - currentTime;
           minTimeout = (minTimeout < tempTimeout) ? minTimeout : tempTimeout;
           connectionTimeout = false;
           connectionTimeoutCount = 0;
@@ -162,6 +168,10 @@ void UDPPlusConnection::timer() {
       }
     }
   }
+
+  outCondition.notify_all();
+  inCondition.notify_all();
+  closeCondition.notify_all();
 }
 
 void UDPPlusConnection::send_packet(Packet * temp) {
@@ -171,6 +181,7 @@ void UDPPlusConnection::send_packet(Packet * temp) {
     timerCondition.notify_all();
     inCondition.notify_all();
     outCondition.notify_all();
+    closeCondition.notify_all();
     return;
   }
   cout << "Sending Data Packet" << endl;
@@ -261,6 +272,9 @@ void UDPPlusConnection::handlePacket(Packet *currentPacket) {
       break;
     }
     case TIME_WAIT:
+      handleAck(currentPacket);
+      delete currentPacket;
+      break;
     case CLOSED:
       delete currentPacket;
       break;
@@ -310,10 +324,10 @@ bool UDPPlusConnection::handleSack(Packet *currentPacket) {
   uint8_t sackRanges[length];// = new uint16_t[optLength/4][2];
     
   currentPacket->getOptField(&sackRanges, sizeof(sackRanges));
-  int maxLength = 8 * length < outItems ? 8 * length : outItems;
+  int maxLength = 8 * length < (outItems - 1) ? 8 * length : (outItems - 1);
 
   int counter = 0;
-  int index = outBufferBegin;
+  int index = (outBufferBegin + 1) & outBufferSize;
   for(int i = 0; i < length; i++)
   {
     uint8_t current = 1;
@@ -344,12 +358,12 @@ void UDPPlusConnection::sendSack() {
     return;
   }
   
-  int size = ceil((double) inBufferDelta / 8);
+  int size = (int) ceil((double) (inBufferDelta - 1) / 8);
   uint8_t buf[size];
   memset(&buf, 0, sizeof(buf));
     
-  int counter = 0;
-  int index = inBufferBegin;
+  int counter = 1;
+  int index = (inBufferBegin + 1) % inBufferSize;
   for(int i = 0; i < size; i++)
   {
     uint8_t current = 1;
@@ -433,13 +447,10 @@ int UDPPlusConnection::processInBuffer() {
       inBufferBegin = (inBufferBegin + 1) % inBufferSize;
       if (inBuffer[currentPosition]->getField(Packet::FIN)) {
         if (outItems == 0) {
-          Packet *temp = new Packet(Packet::FIN, newSeqNum++, newAckNum);
-          outBuffer[outBufferBegin] = temp;
-          outItems++;
-          send_packet(temp);
           currentState = CLOSE_WAIT;
           inBuffer[currentPosition] = NULL;
           delete inBuffer[currentPosition];
+          inCondition.notify_all();
         }
         done = true;
       }

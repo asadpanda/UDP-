@@ -51,6 +51,7 @@ int main(int argc, char* argv[]) {
       reciever(open);
       //myThread->join();
       open->closeConnection();
+      conn->close_all();
       delete open;
       break;
     
@@ -67,11 +68,11 @@ int main(int argc, char* argv[]) {
       // this will also start the listener thread for receiving data
       open = conn->conn( (struct sockaddr *) &host, sizeof(host));
       
-      myThread = new boost::thread(&sender, open);
-      reciever(open);
+      //  myThread = new boost::thread(&sender, open);
+      sender(open);
       
       cout << "Sending Finished: Joining Recieving thread" << endl;
-      myThread->join();
+      //myThread->join();
       open->closeConnection();
       delete open;
       break;
@@ -85,11 +86,10 @@ void sender(UDPPlusConnection *open) {
   for (int i = 0; i < 9; i++) {
     stringstream tempStream;
     // while (true) {
-    tempStream << "This is line " << i << endl;
-    string temp = tempStream.str();
+    tempStream << i;
+    string temp = "((DATAGRAM:" + tempStream.str() + "))";
     //std::getline(std::cin, temp);
-    cout << "buffer recieved::" << endl;
-    if (temp == "-1") { break; }
+    //if (temp == "-1") { break; }
     if (open->send(temp.c_str(), temp.size()) == -1) {
       break;
     }
@@ -101,9 +101,11 @@ void reciever(UDPPlusConnection *conn) {
   
   cout << "Reciever Thread Started" << endl;
   while (true) {
-    if ( conn->recv(buf, sizeof(buf)) > 0 ) {
+    int value = conn->recv(buf, sizeof(buf));
+    cerr << "Reciever Return Value:" << value << endl;
+    if ( value == -1 ) {
       printf("connection closed");
-      break;
+      return;
     }
     cout << buf;
   }

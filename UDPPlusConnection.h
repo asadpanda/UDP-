@@ -73,6 +73,7 @@ private:
   boost::condition_variable timerCondition;
   boost::condition_variable inCondition;
   boost::condition_variable outCondition;
+  boost::condition_variable closeCondition;
   boost::mutex sharedMutex;
 
   deque< Packet* > inQueue;
