@@ -98,11 +98,10 @@ void UDPPlusConnection::closeConnection() {
     currentState = FIN_WAIT;
   }
   
-  Packet *temp = new Packet(Packet::FIN, newSeqNum++, newAckNum);
+  Packet *temp = new Packet(Packet::FIN | Packet::ACK, newSeqNum++, newAckNum);
   outBuffer[(outBufferBegin + outItems) % outBufferSize] = temp;
   outItems++;
   send_packet(temp);
-  //closeCondition.wait(l);
 }
 
 void UDPPlusConnection::timer() {
@@ -117,6 +116,7 @@ void UDPPlusConnection::timer() {
   
   boost::mutex::scoped_lock l(sharedMutex);  // change to timerMutex
   while(!done) {
+    cerr << "Timer event occurred" << to_simple_string(minTimeout) << endl;
     bool conditionNotified = timerCondition.timed_wait(l, minTimeout);
     ptime currentTime(microsec_clock::universal_time());
     minTimeout = maximumTimeout;
@@ -133,12 +133,8 @@ void UDPPlusConnection::timer() {
     
     connectionTimeout = true;
     
-    if (currentState == TIME_WAIT) {
-      connectionTimeout = false;
-      if (conditionNotified = true) { minTimeout = maximumTimeout; }
-      else { currentState = CLOSED; closeCondition.notify_all(); break; }
-    }
-    else if (currentState == LAST_ACK) {
+
+    if (currentState == LAST_ACK) {
       closeCondition.notify_all();
       currentState = CLOSED;
       break;
@@ -166,8 +162,15 @@ void UDPPlusConnection::timer() {
         }
       }
     }
+    if (currentState == TIME_WAIT) {
+      connectionTimeout = false;
+      minTimeout = timeout;
+      if (conditionNotified = false) { cerr << "in timewait" << endl; continue; }
+      else { currentState = CLOSED; break; }
+    }
   }
 
+  cout << "exiting timer" << endl;
   outCondition.notify_all();
   inCondition.notify_all();
   closeCondition.notify_all();
@@ -391,11 +394,11 @@ bool UDPPlusConnection::handleData(Packet *currentPacket) {
   if (currentAckNumber < bottomAck) {
     currentAckNumber += Packet::MAXSIZE;
   }
-  if (currentState == CLOSE_WAIT || currentState == FIN_WAIT) {
+  if (currentState == CLOSE_WAIT) {
     int tempMaxAckNumber = maxAckNumber;
-    if (currentAckNumber > maxAckNumber) { tempMaxAckNumber = maxAckNumber; }
+    if (currentAckNumber > maxAckNumber) { tempMaxAckNumber = maxAckNumber + Packet::MAXSIZE; }
     
-    if ((maxAckNumber - currentAckNumber) > inBufferDelta) {
+    if ((tempMaxAckNumber - currentAckNumber) > inBufferDelta) {
       return false;
     }
   }
@@ -437,13 +440,12 @@ bool UDPPlusConnection::handleFin(Packet *currentPacket) {
   }
   int index = currentAckNumber - newAckNum;
   if (index < inBufferSize) {
-    if( inBuffer[inBufferBegin + index] != NULL ) {
-      delete inBuffer[inBufferBegin + index];
-    }
-    inBuffer[inBufferBegin + index] = currentPacket;
-    maxAckNumber = currentAckNumber;
-    if ( currentState != FIN_WAIT ) { currentState = CLOSE_WAIT; }
-    else { currentState = TIME_WAIT; }
+//    if( inBuffer[inBufferBegin + index] != NULL ) {
+//      delete inBuffer[inBufferBegin + index];
+//    }
+    maxAckNumber = (currentAckNumber + 1) % Packet::MAXSIZE;
+    if ( currentState == FIN_WAIT ) { currentState = TIME_WAIT; cout << "IN TIME_WAIT" << endl;}
+    else { currentState = CLOSE_WAIT; }
     return true;
   }
   return false;
@@ -458,7 +460,8 @@ int UDPPlusConnection::processInBuffer() {
       inBufferBegin = (inBufferBegin + 1) % inBufferSize;
       if (inBuffer[currentPosition]->getField(Packet::FIN)) {
         if (outItems == 0) {
-          currentState = CLOSE_WAIT;
+          if ( currentState == FIN_WAIT ) { currentState = TIME_WAIT; cout << "IN TIME_WAIT" << endl;}
+          else { currentState = CLOSE_WAIT; }
           inBuffer[currentPosition] = NULL;
           delete inBuffer[currentPosition];
           inCondition.notify_all();
@@ -471,9 +474,10 @@ int UDPPlusConnection::processInBuffer() {
         inCondition.notify_one();
         inBuffer[currentPosition] = NULL;
       }
-      else {
+      else { // in fin
         inBuffer[currentPosition] = NULL;
         delete inBuffer[currentPosition];
+
       }
     }
     else {
@@ -549,7 +553,7 @@ void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   
   init = outBuffer[outBufferBegin]->getSeqNumber();
   
-  if(init < newSeqNum) {
+  if(init <= newSeqNum) {
     total = newSeqNum - (int)init;
   } else {
     total = ((int) Packet::MAXSIZE + (int) newSeqNum) - ((int)init);
@@ -561,6 +565,7 @@ void UDPPlusConnection::releaseBufferTill(int newSeqNum) {
   for (int i = 0; i < total; i++) {
     cout << "Releasing Packet " << outBuffer[bufferLoc] << "from output" << endl;
     delete outBuffer[bufferLoc];
+    outBufferBegin = (outBufferBegin + 1) % outBufferSize;
     outItems--;
     outBuffer[bufferLoc] = NULL;
     bufferLoc = (bufferLoc + 1) % outBufferSize;

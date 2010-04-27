@@ -50,9 +50,8 @@ int main(int argc, char* argv[]) {
       //myThread = new boost::thread(&sender, open);
       reciever(open);
       //myThread->join();
-      open->closeConnection();
-      conn->close_all();
       delete open;
+      delete conn;
       break;
     
     // Application is a client
@@ -75,6 +74,7 @@ int main(int argc, char* argv[]) {
       //myThread->join();
       open->closeConnection();
       delete open;
+      delete conn;
       break;
   }  
 	

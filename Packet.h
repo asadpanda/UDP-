@@ -3,6 +3,12 @@
  *
  *  Created on: Apr 15, 2010
  *      Authors: Asad Saeed, Adam Darrah
+ *
+ *  This Packet class encapsulates data being sent
+ *  through UDP+.  It builds a buffered data set
+ *  that will be forwarded to the reciever.
+ *
+ *
  */
 
 //          Copyright Joe Coder 2004 - 2006.

@@ -214,7 +214,7 @@ int UDPPlus::findSlot() {
 
 void UDPPlus::close_one(UDPPlusConnection *conn) {
   // close single connection
-	conn->closeConnection();
+  delete conn;
 }
 
 void UDPPlus::close_all() {

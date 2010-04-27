@@ -40,7 +40,8 @@
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/bind.hpp>
-#include <pthread.h>
+#include <boost/date_time.hpp>
+//#include <pthread.h>
 
 #define CONNECTION_CLOSED -1
 
